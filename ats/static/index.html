@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ATS — Resume Screener</title>
+  <meta name="description" content="Internal HR tool to screen and rank resumes against a job description using AI." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Base ───────────────────────────────────────────── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #f7f8fa;
+      --surface: #ffffff;
+      --border: #e2e6ea;
+      --shadow: 0 1px 4px rgba(0, 0, 0, .06), 0 4px 16px rgba(0, 0, 0, .06);
+      --shadow-hover: 0 4px 12px rgba(0, 0, 0, .10), 0 8px 24px rgba(0, 0, 0, .08);
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --primary-light: #eff6ff;
+      --green: #16a34a;
+      --green-bg: #f0fdf4;
+      --yellow: #d97706;
+      --yellow-bg: #fffbeb;
+      --red: #dc2626;
+      --red-bg: #fef2f2;
+      --text: #111827;
+      --text-secondary: #6b7280;
+      --text-muted: #9ca3af;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --transition: 0.18s ease;
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── Layout ─────────────────────────────────────────────────── */
+    .app-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .app-header svg {
+      color: var(--primary);
+      flex-shrink: 0;
+    }
+
+    .app-header h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -.3px;
+    }
+
+    .app-header span {
+      color: var(--text-muted);
+      font-size: 12px;
+      margin-left: 4px;
+      font-weight: 400;
+    }
+
+    .app-body {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 0;
+      height: calc(100vh - 56px);
+      overflow: hidden;
+    }
+
+    /* ── Input Panel ────────────────────────────────────────────── */
+    .input-panel {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 20px;
+      gap: 16px;
+    }
+
+    .panel-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--text-muted);
+    }
+
+    /* JD mode toggle */
+    .jd-mode-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 3px;
+      margin-bottom: 8px;
+    }
+
+    .jd-mode-tab {
+      flex: 1;
+      padding: 5px 8px;
+      background: none;
+      border: none;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    .jd-mode-tab.active {
+      background: var(--surface);
+      color: var(--primary);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+    }
+
+    /* JD file drop */
+    .jd-file-drop {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-sm);
+      padding: 20px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color var(--transition), background var(--transition);
+      background: var(--bg);
+      position: relative;
+    }
+
+    .jd-file-drop:hover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .jd-file-drop input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .jd-file-drop p {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .jd-file-drop small {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .jd-file-selected {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--primary-light);
+      border: 1px solid #bfdbfe;
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--primary);
+    }
+
+    .jd-file-selected .ext {
+      background: var(--primary);
+      color: #fff;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    #jd-input {
+      width: 100%;
+      min-height: 180px;
+      resize: vertical;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--text);
+      background: var(--bg);
+      transition: border-color var(--transition), box-shadow var(--transition);
+      outline: none;
+    }
+
+    #jd-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+      background: var(--surface);
+    }
+
+    /* Field label (shared) */
+    .field-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .field-label .req {
+      color: var(--red);
+    }
+
+    /* Resume upload buttons row */
+    .resume-upload-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .upload-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: border-color var(--transition), color var(--transition), background var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .upload-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .upload-btn input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* File Upload */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 24px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color var(--transition), background var(--transition);
+      background: var(--bg);
+      position: relative;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.dragover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-zone-icon {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .drop-zone p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .drop-zone small {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      display: block;
+    }
+
+    /* File list */
+    #file-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .file-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--primary-light);
+      border: 1px solid #bfdbfe;
+      border-radius: 20px;
+      padding: 4px 10px 4px 8px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--primary);
+      animation: pill-in .15s ease;
+    }
+
+    @keyframes pill-in {
+      from {
+        opacity: 0;
+        transform: translateY(-4px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .file-pill .ext {
+      background: var(--primary);
+      color: #fff;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    .file-pill .name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-count {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: right;
+      font-weight: 500;
+    }
+
+    /* Screen button */
+    #screen-btn {
+      width: 100%;
+      padding: 12px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      letter-spacing: -.1px;
+    }
+
+    #screen-btn:not(:disabled):hover {
+      background: var(--primary-dark);
+      box-shadow: 0 4px 14px rgba(37, 99, 235, .35);
+    }
+
+    #screen-btn:not(:disabled):active {
+      transform: scale(.98);
+    }
+
+    #screen-btn:disabled {
+      background: #d1d5db;
+      color: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    /* Progress */
+    #progress-bar {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 0;
+    }
+
+    #progress-bar.visible {
+      display: flex;
+    }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    #progress-msg {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    /* ── Results Panel ──────────────────────────────────────────── */
+    .results-panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Summary bar */
+    #summary-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .stat-value.green {
+      color: var(--green);
+    }
+
+    .stat-divider {
+      width: 1px;
+      height: 36px;
+      background: var(--border);
+    }
+
+    /* Export button */
+    .results-toolbar {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #export-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: border-color var(--transition), color var(--transition), background var(--transition);
+    }
+
+    #export-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    #export-btn:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+
+    /* Tabs */
+    .tabs-row {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      padding: 0 24px;
+    }
+
+    .tab-btn {
+      padding: 12px 0;
+      margin-right: 24px;
+      background: none;
+      border: none;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2.5px solid transparent;
+      transition: color var(--transition), border-color var(--transition);
+      position: relative;
+      bottom: -1px;
+    }
+
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .tab-btn .count-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--primary-light);
+      color: var(--primary);
+      border-radius: 10px;
+      padding: 0 6px;
+      font-size: 10px;
+      font-weight: 700;
+      margin-left: 6px;
+      min-width: 18px;
+      height: 18px;
+    }
+
+    .tab-btn.active .count-pill {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    /* Card grid */
+    .cards-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+    }
+
+    /* Empty/placeholder state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 12px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .empty-state svg {
+      opacity: .25;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .empty-state small {
+      font-size: 12px;
+    }
+
+    /* Candidate card */
+    .candidate-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+      transition: box-shadow var(--transition), transform var(--transition);
+      animation: card-in .2s ease;
+    }
+
+    @keyframes card-in {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .candidate-card:hover {
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-1px);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .card-identity {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .candidate-name {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .candidate-file {
+      font-size: 11px;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .card-badges {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* Score badge */
+    .score-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      flex-shrink: 0;
+    }
+
+    .score-badge small {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0;
+      opacity: .7;
+      margin-top: -2px;
+    }
+
+    .score-green {
+      background: var(--green-bg);
+      color: var(--green);
+      border: 2px solid #bbf7d0;
+    }
+
+    .score-yellow {
+      background: var(--yellow-bg);
+      color: var(--yellow);
+      border: 2px solid #fde68a;
+    }
+
+    .score-red {
+      background: var(--red-bg);
+      color: var(--red);
+      border: 2px solid #fecaca;
+    }
+
+    .shortlisted-chip {
+      background: var(--green-bg);
+      color: var(--green);
+      border: 1px solid #bbf7d0;
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .error-chip {
+      background: var(--red-bg);
+      color: var(--red);
+      border: 1px solid #fecaca;
+      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      margin-bottom: 10px;
+    }
+
+    /* Score bars */
+    .score-bars {
+      margin-bottom: 14px;
+    }
+
+    .score-bar-row {
+      display: grid;
+      grid-template-columns: 100px 1fr 36px;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 7px;
+    }
+
+    .bar-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .bar-track {
+      background: var(--bg);
+      border-radius: 4px;
+      height: 7px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width .6s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    .bar-fill.skills {
+      background: linear-gradient(90deg, #3b82f6, #2563eb);
+    }
+
+    .bar-fill.experience {
+      background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+    }
+
+    .bar-fill.education {
+      background: linear-gradient(90deg, #f59e0b, #d97706);
+    }
+
+    .bar-fill.presentation {
+      background: linear-gradient(90deg, #10b981, #059669);
+    }
+
+    .bar-score {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-align: right;
+    }
+
+    /* Strengths / Gaps */
+    .card-lists {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .list-box {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .list-box-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .7px;
+      margin-bottom: 4px;
+    }
+
+    .list-box-title.green {
+      color: var(--green);
+    }
+
+    .list-box-title.red {
+      color: var(--red);
+    }
+
+    .list-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+
+    .list-item .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+
+    .list-item .dot.green {
+      background: var(--green);
+    }
+
+    .list-item .dot.red {
+      background: var(--red);
+    }
+
+    /* Summary */
+    .card-summary {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Responsive ─────────────────────────────────────────────── */
+    @media (max-width: 800px) {
+      .app-body {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+        height: auto;
+        overflow: visible;
+      }
+
+      .input-panel {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .results-panel {
+        min-height: 500px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ── Header ─────────────────────────────────────────────────── -->
+  <header class="app-header">
+    <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+    <h1>ATS Resume Screener <span>— powered by AI</span></h1>
+  </header>
+
+  <div class="app-body">
+
+    <!-- ── Input Panel ───────────────────────────────────────────── -->
+    <aside class="input-panel" id="input-panel">
+      <p class="panel-title">Configuration</p>
+
+      <!-- JD -->
+      <div>
+        <div class="field-label">
+          <svg width="13" height="13" fill="none" viewBox="0 0 20 20" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 12h6M9 8h6M5 20h14a2 2 0 002-2V4a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+          Job Description <span class="req">*</span>
+        </div>
+        <!-- Mode toggle -->
+        <div class="jd-mode-tabs">
+          <button class="jd-mode-tab active" id="jd-tab-text" type="button">✏ Paste Text</button>
+          <button class="jd-mode-tab" id="jd-tab-file" type="button">📄 Upload PDF / DOCX</button>
+        </div>
+        <!-- Text mode -->
+        <div id="jd-text-panel">
+          <textarea id="jd-input"
+            placeholder="Paste the full job description here…&#10;&#10;Include role, responsibilities, required skills, qualifications, and any preferences."></textarea>
+        </div>
+        <!-- File mode -->
+        <div id="jd-file-panel" style="display:none;">
+          <div class="jd-file-drop" id="jd-drop-zone">
+            <input type="file" id="jd-file-input" accept=".pdf,.docx" aria-label="Upload job description file" />
+            <p>Click to browse or drop a file here</p>
+            <small>Accepts .pdf or .docx</small>
+          </div>
+          <div class="jd-file-selected" id="jd-file-selected" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Resume upload -->
+      <div>
+        <div class="field-label">
+          <svg width="13" height="13" fill="none" viewBox="0 0 20 20" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4-4m0 0l4-4m-4 4h12M8 8V4h12v12H8" />
+          </svg>
+          Resume Files <span class="req">*</span>
+        </div>
+        <!-- Two upload buttons -->
+        <div class="resume-upload-row">
+          <label class="upload-btn">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+            </svg>
+            Individual Files
+            <input type="file" id="file-input" multiple accept=".pdf,.docx"
+              aria-label="Upload individual resume files" />
+          </label>
+          <label class="upload-btn">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+            Select Folder
+            <input type="file" id="folder-input" multiple accept=".pdf,.docx" webkitdirectory
+              aria-label="Upload a folder of resume files" />
+          </label>
+        </div>
+        <!-- Drop zone -->
+        <div class="drop-zone" id="drop-zone">
+          <input type="file" id="drop-file-input" multiple accept=".pdf,.docx" style="display:none;" />
+          <div class="drop-zone-icon">📂</div>
+          <p>…or drag &amp; drop resumes here</p>
+          <small>Accepts .pdf and .docx — individual files or entire folders</small>
+        </div>
+      </div>
+
+      <!-- File list -->
+      <div id="file-list-wrapper" style="display:none;">
+        <div class="field-label">Selected Files</div>
+        <div id="file-list"></div>
+        <p class="file-count" id="file-count"></p>
+      </div>
+
+      <!-- Progress -->
+      <div id="progress-bar">
+        <div class="spinner"></div>
+        <p id="progress-msg">Uploading resumes…</p>
+        <div class="progress-track" style="width:100%;">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <button id="screen-btn" disabled>
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+        Screen Resumes
+      </button>
+    </aside>
+
+    <!-- ── Results Panel ─────────────────────────────────────────── -->
+    <section class="results-panel" id="results-panel">
+
+      <!-- Summary bar -->
+      <div id="summary-bar">
+        <div class="stat">
+          <span class="stat-label">Screened</span>
+          <span class="stat-value" id="stat-total">—</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-label">Shortlisted</span>
+          <span class="stat-value green" id="stat-shortlisted">—</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-label">Avg Score</span>
+          <span class="stat-value" id="stat-avg">—</span>
+        </div>
+        <div class="results-toolbar">
+          <button id="export-btn" disabled>
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+            </svg>
+            Export CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs-row">
+        <button class="tab-btn active" id="tab-shortlisted" data-tab="shortlisted">
+          Shortlisted <span class="count-pill" id="shortlisted-pill">0</span>
+        </button>
+        <button class="tab-btn" id="tab-all" data-tab="all">
+          All Candidates <span class="count-pill" id="all-pill">0</span>
+        </button>
+      </div>
+
+      <!-- Cards -->
+      <div class="cards-container" id="cards-container">
+        <div class="empty-state" id="empty-state">
+          <svg width="64" height="64" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          <p>No results yet</p>
+          <small>Paste a JD, upload resumes, then click "Screen Resumes"</small>
+        </div>
+        <div id="cards-list" style="display:none;"></div>
+      </div>
+
+    </section>
+  </div>
+
+  <script>
+    /* ─── State ───────────────────────────────────────────────────── */
+    let allCandidates = [];
+    let activeTab = 'shortlisted';
+    let selectedFiles = [];   // resume files
+    let jdMode = 'text';      // 'text' | 'file'
+    let jdFile = null;        // File object when jdMode === 'file'
+
+    /* ─── DOM refs ────────────────────────────────────────────────── */
+    const jdInput = document.getElementById('jd-input');
+    const jdTabText = document.getElementById('jd-tab-text');
+    const jdTabFile = document.getElementById('jd-tab-file');
+    const jdTextPanel = document.getElementById('jd-text-panel');
+    const jdFilePanel = document.getElementById('jd-file-panel');
+    const jdFileInput = document.getElementById('jd-file-input');
+    const jdDropZone = document.getElementById('jd-drop-zone');
+    const jdFileSelected = document.getElementById('jd-file-selected');
+    const fileInput = document.getElementById('file-input');
+    const folderInput = document.getElementById('folder-input');
+    const dropZone = document.getElementById('drop-zone');
+    const fileList = document.getElementById('file-list');
+    const fileListWrap = document.getElementById('file-list-wrapper');
+    const fileCount = document.getElementById('file-count');
+    const screenBtn = document.getElementById('screen-btn');
+    const progressBar = document.getElementById('progress-bar');
+    const progressMsg = document.getElementById('progress-msg');
+    const progressFill = document.getElementById('progress-fill');
+    const emptyState = document.getElementById('empty-state');
+    const cardsList = document.getElementById('cards-list');
+    const exportBtn = document.getElementById('export-btn');
+    const statTotal = document.getElementById('stat-total');
+    const statShortlisted = document.getElementById('stat-shortlisted');
+    const statAvg = document.getElementById('stat-avg');
+    const shortlistedPill = document.getElementById('shortlisted-pill');
+    const allPill = document.getElementById('all-pill');
+    const tabBtns = document.querySelectorAll('.tab-btn');
+
+    /* ─── JD mode toggle ─────────────────────────────────────────── */
+    function setJdMode(mode) {
+      jdMode = mode;
+      jdTabText.classList.toggle('active', mode === 'text');
+      jdTabFile.classList.toggle('active', mode === 'file');
+      jdTextPanel.style.display = mode === 'text' ? '' : 'none';
+      jdFilePanel.style.display = mode === 'file' ? '' : 'none';
+      if (mode === 'text') { jdFile = null; }
+      checkReady();
+    }
+    jdTabText.addEventListener('click', () => setJdMode('text'));
+    jdTabFile.addEventListener('click', () => setJdMode('file'));
+
+    /* ─── JD file input ──────────────────────────────────────────── */
+    function applyJdFile(f) {
+      if (!f) return;
+      const ext = f.name.split('.').pop().toLowerCase();
+      if (ext !== 'pdf' && ext !== 'docx') {
+        alert('Please upload a .pdf or .docx file for the Job Description.');
+        return;
+      }
+      jdFile = f;
+      jdFileSelected.style.display = 'flex';
+      jdFileSelected.innerHTML = `
+      <span class="ext">${ext.toUpperCase()}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(f.name)}">${escHtml(f.name)}</span>
+    `;
+      jdDropZone.style.display = 'none';
+      checkReady();
+    }
+    jdFileInput.addEventListener('change', () => applyJdFile(jdFileInput.files[0]));
+    jdDropZone.addEventListener('dragover', e => { e.preventDefault(); jdDropZone.style.borderColor = 'var(--primary)'; });
+    jdDropZone.addEventListener('dragleave', () => jdDropZone.style.borderColor = '');
+    jdDropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      jdDropZone.style.borderColor = '';
+      applyJdFile(e.dataTransfer.files[0]);
+    });
+    // Allow clicking jd-file-selected to re-pick
+    jdFileSelected.addEventListener('click', () => {
+      jdFile = null;
+      jdFileSelected.style.display = 'none';
+      jdDropZone.style.display = '';
+      checkReady();
+    });
+
+    /* ─── Enable/disable screen button ───────────────────────────── */
+    function checkReady() {
+      const hasJD = jdMode === 'text'
+        ? jdInput.value.trim().length > 0
+        : jdFile !== null;
+      const hasFiles = selectedFiles.length > 0;
+      screenBtn.disabled = !(hasJD && hasFiles);
+    }
+
+    jdInput.addEventListener('input', checkReady);
+
+    /* ─── Resume file handling ────────────────────────────────────── */
+    function mergeFiles(newFiles) {
+      // Merge new files into selectedFiles, avoid duplicates by name+size
+      const existing = new Set(selectedFiles.map(f => f.name + f.size));
+      const added = Array.from(newFiles).filter(f => {
+        const key = f.name + f.size;
+        if (existing.has(key)) return false;
+        existing.add(key);
+        return true;
+      });
+      selectedFiles = [...selectedFiles, ...added];
+      renderFileList();
+      checkReady();
+    }
+
+    fileInput.addEventListener('change', () => mergeFiles(fileInput.files));
+    folderInput.addEventListener('change', () => mergeFiles(folderInput.files));
+
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      mergeFiles(e.dataTransfer.files);
+    });
+
+    function renderFileList() {
+      fileList.innerHTML = '';
+      if (selectedFiles.length === 0) {
+        fileListWrap.style.display = 'none';
+        return;
+      }
+      fileListWrap.style.display = 'block';
+      selectedFiles.forEach((f, idx) => {
+        const ext = f.name.split('.').pop().toUpperCase();
+        const pill = document.createElement('div');
+        pill.className = 'file-pill';
+        pill.style.cursor = 'pointer';
+        pill.title = 'Click to remove';
+        pill.innerHTML = `
+        <span class="ext">${ext}</span>
+        <span class="name" title="${f.name}">${f.name}</span>
+        <span style="margin-left:auto;opacity:.5;font-size:13px;">&times;</span>
+      `;
+        pill.addEventListener('click', () => {
+          selectedFiles.splice(idx, 1);
+          renderFileList();
+          checkReady();
+        });
+        fileList.appendChild(pill);
+      });
+      fileCount.textContent = `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''} selected`;
+    }
+
+    /* ─── Screen button click ─────────────────────────────────────── */
+    screenBtn.addEventListener('click', async () => {
+      if (selectedFiles.length === 0) return;
+      const jdText = jdMode === 'text' ? jdInput.value.trim() : '';
+      if (jdMode === 'text' && !jdText) return;
+      if (jdMode === 'file' && !jdFile) return;
+
+      setLoading(true, 0, 0, 0);
+      allCandidates = [];
+      renderResults();
+
+      const formData = new FormData();
+      if (jdMode === 'file') {
+        formData.append('jd_file', jdFile);
+      } else {
+        formData.append('jd', jdText);
+      }
+      selectedFiles.forEach(f => formData.append('files', f));
+
+      try {
+        const resp = await fetch('/api/screen', { method: 'POST', body: formData });
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+          throw new Error(err.detail || `HTTP ${resp.status}`);
+        }
+        const { job_id, total } = await resp.json();
+        await pollJob(job_id, total);
+      } catch (err) {
+        alert(`Screening failed: ${err.message}`);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    /* ─── Poll job until done ─────────────────────────────────────── */
+    function pollJob(jobId, total) {
+      return new Promise((resolve, reject) => {
+        const interval = setInterval(async () => {
+          try {
+            const resp = await fetch(`/api/jobs/${jobId}`);
+            if (!resp.ok) throw new Error(`Poll error: ${resp.status}`);
+            const job = await resp.json();
+
+            const shortlisted = job.results.filter(c => c.shortlisted).length;
+            setLoading(true, total, job.completed, shortlisted);
+
+            if (job.status === 'done') {
+              clearInterval(interval);
+              allCandidates = job.results;
+              renderResults();
+              resolve();
+            } else if (job.status === 'error') {
+              clearInterval(interval);
+              reject(new Error(job.error || 'Screening job failed on the server.'));
+            }
+          } catch (err) {
+            clearInterval(interval);
+            reject(err);
+          }
+        }, 1500);
+      });
+    }
+
+    function setLoading(on, total = 0, completed = 0, shortlisted = 0) {
+      screenBtn.disabled = on;
+      progressBar.classList.toggle('visible', on);
+      if (on) {
+        if (total > 0) {
+          const pct = Math.round((completed / total) * 100);
+          progressMsg.textContent = `Screened ${completed} / ${total} — ${shortlisted} shortlisted so far`;
+          progressFill.style.width = `${pct}%`;
+        } else {
+          progressMsg.textContent = 'Uploading resumes…';
+          progressFill.style.width = '0%';
+        }
+      } else {
+        progressFill.style.width = '0%';
+        checkReady();
+      }
+    }
+
+    /* ─── Tabs ────────────────────────────────────────────────────── */
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeTab = btn.dataset.tab;
+        tabBtns.forEach(b => b.classList.toggle('active', b === btn));
+        renderCards();
+      });
+    });
+
+    /* ─── Render ──────────────────────────────────────────────────── */
+    function renderResults() {
+      const total = allCandidates.length;
+      const shortlisted = allCandidates.filter(c => c.shortlisted).length;
+      const scored = allCandidates.filter(c => !c.error);
+      const avg = scored.length
+        ? Math.round(scored.reduce((s, c) => s + c.overall_score, 0) / scored.length)
+        : 0;
+
+      statTotal.textContent = total || '—';
+      statShortlisted.textContent = total ? shortlisted : '—';
+      statAvg.textContent = total ? avg : '—';
+      shortlistedPill.textContent = shortlisted;
+      allPill.textContent = total;
+
+      exportBtn.disabled = total === 0;
+      renderCards();
+    }
+
+    function renderCards() {
+      const candidates = activeTab === 'shortlisted'
+        ? allCandidates.filter(c => c.shortlisted)
+        : allCandidates;
+
+      if (allCandidates.length === 0) {
+        emptyState.style.display = 'flex';
+        cardsList.style.display = 'none';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      cardsList.style.display = 'block';
+      cardsList.innerHTML = '';
+
+      if (candidates.length === 0 && activeTab === 'shortlisted') {
+        cardsList.innerHTML = `
+        <div class="empty-state" style="padding:40px 0;">
+          <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <p>No shortlisted candidates</p>
+          <small>No candidate scored ≥ 70. Check the "All Candidates" tab.</small>
+        </div>`;
+        return;
+      }
+
+      candidates.forEach(c => cardsList.appendChild(buildCard(c)));
+    }
+
+    function buildCard(c) {
+      const scoreClass = c.overall_score >= 70 ? 'score-green'
+        : c.overall_score >= 50 ? 'score-yellow'
+          : 'score-red';
+
+      const card = document.createElement('div');
+      card.className = 'candidate-card';
+
+      const errBlock = c.error
+        ? `<div class="error-chip">⚠ ${escHtml(c.error)}</div>`
+        : '';
+
+      const strengthsHtml = (c.strengths || []).map(s =>
+        `<div class="list-item"><span class="dot green"></span><span>${escHtml(s)}</span></div>`
+      ).join('');
+
+      const gapsHtml = (c.gaps || []).map(g =>
+        `<div class="list-item"><span class="dot red"></span><span>${escHtml(g)}</span></div>`
+      ).join('');
+
+      const shortlistedBadge = c.shortlisted
+        ? `<div class="shortlisted-chip">
+           <svg width="10" height="10" fill="currentColor" viewBox="0 0 20 20">
+             <path fill-rule="evenodd" clip-rule="evenodd"
+               d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+           </svg>
+           Shortlisted
+         </div>`
+        : '';
+
+      const maxMap = { skills: 40, experience: 30, education: 20, presentation: 10 };
+
+      const barsHtml = Object.entries(maxMap).map(([key, max]) => {
+        const val = c[`${key}_score`] ?? 0;
+        const pct = Math.min(100, Math.round((val / max) * 100));
+        const lbl = key.charAt(0).toUpperCase() + key.slice(1);
+        return `
+        <div class="score-bar-row">
+          <span class="bar-label">${lbl}</span>
+          <div class="bar-track">
+            <div class="bar-fill ${key}" style="width:${pct}%"></div>
+          </div>
+          <span class="bar-score">${val}/${max}</span>
+        </div>`;
+      }).join('');
+
+      card.innerHTML = `
+      <div class="card-header">
+        <div class="card-identity">
+          <div class="candidate-name">${escHtml(c.candidate_name || 'Unknown')}</div>
+          <div class="candidate-file">${escHtml(c.filename || '')}</div>
+        </div>
+        <div class="card-badges">
+          ${shortlistedBadge}
+          <div class="score-badge ${scoreClass}">
+            ${c.overall_score}
+            <small>/ 100</small>
+          </div>
+        </div>
+      </div>
+      ${errBlock}
+      <div class="score-bars">${barsHtml}</div>
+      ${(strengthsHtml || gapsHtml) ? `
+        <div class="card-lists">
+          <div class="list-box">
+            <div class="list-box-title green">✓ Strengths</div>
+            ${strengthsHtml || '<div class="list-item" style="color:var(--text-muted)">None listed</div>'}
+          </div>
+          <div class="list-box">
+            <div class="list-box-title red">✗ Gaps</div>
+            ${gapsHtml || '<div class="list-item" style="color:var(--text-muted)">None listed</div>'}
+          </div>
+        </div>` : ''}
+      ${c.summary ? `<div class="card-summary">${escHtml(c.summary)}</div>` : ''}
+    `;
+      return card;
+    }
+
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    /* ─── CSV Export ──────────────────────────────────────────────── */
+    exportBtn.addEventListener('click', () => {
+      if (!allCandidates.length) return;
+
+      const headers = [
+        'Filename', 'Candidate Name', 'Overall Score',
+        'Skills Score', 'Experience Score', 'Education Score', 'Presentation Score',
+        'Shortlisted', 'Strengths', 'Gaps', 'Summary', 'Error'
+      ];
+
+      const rows = allCandidates.map(c => [
+        c.filename || '',
+        c.candidate_name || 'Unknown',
+        c.overall_score ?? 0,
+        c.skills_score ?? 0,
+        c.experience_score ?? 0,
+        c.education_score ?? 0,
+        c.presentation_score ?? 0,
+        c.shortlisted ? 'Yes' : 'No',
+        (c.strengths || []).join(' | '),
+        (c.gaps || []).join(' | '),
+        c.summary || '',
+        c.error || ''
+      ]);
+
+      const csvContent = [headers, ...rows]
+        .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ats_results_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</body>
+
+</html>
