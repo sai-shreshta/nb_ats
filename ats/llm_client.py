@@ -24,7 +24,18 @@ load_dotenv()
 _CONCURRENCY = int(os.getenv("LLM_CONCURRENCY", "10"))
 _semaphore = asyncio.Semaphore(_CONCURRENCY)
 
-PROMPT_TEMPLATE = """You are an expert technical recruiter. Carefully read the Job Description and the Resume below and evaluate the candidate.
+PROMPT_TEMPLATE = """You are an expert recruiter evaluating a candidate's resume against a job description.
+
+Before scoring, carefully read the JD and identify:
+1. The core nature of the work (e.g. phone-based calling, field sales, software engineering, data analysis, etc.)
+2. The must-have skills and experience — things explicitly required, not just mentioned
+3. The nice-to-haves — preferred but not essential
+
+Then evaluate the resume with these principles:
+- Match the candidate's ACTUAL day-to-day work against what the role requires, not just job titles or industry names. A "Sales Manager" in a field sales role is very different from a "Sales Manager" in an inside sales role — look at what they actually did.
+- Be skeptical of keyword overlap. A resume mentioning the same industry or function as the JD is not automatically a good match if the nature of the work differs.
+- Penalize vague, generic resumes that list soft skills (hardworking, positive attitude) or hobbies/personal profile sections without concrete work evidence.
+- Do not reward experience in industries or functions that are clearly irrelevant to the JD, even if they share surface-level keywords.
 
 Return ONLY a valid JSON object with this exact structure, no other text:
 {{
@@ -41,10 +52,10 @@ Return ONLY a valid JSON object with this exact structure, no other text:
 }}
 
 Scoring rubric:
-- skills_score (0-40): How well do the candidate's technical and non-technical skills match the JD requirements? Required skills carry 3x more weight than preferred skills.
-- experience_score (0-30): Relevance and depth of work experience to this role. Consider years, seniority, industry, and quality of past roles.
-- education_score (0-20): Does education meet requirements? Consider degree level, field of study, and institution quality.
-- presentation_score (0-10): Clarity, professionalism, and structure of the resume itself.
+- skills_score (0-40): How well do the candidate's demonstrated skills match what the JD actually requires day-to-day? Required skills carry 3x more weight than preferred. Penalize if skills listed are generic soft skills with no supporting work evidence.
+- experience_score (0-30): How closely does the candidate's past work match the nature and context of this role? Consider whether the type of work (not just the job title or industry) aligns. Irrelevant experience — even in the same industry — should score low. Reward specificity and depth over breadth.
+- education_score (0-20): Does education meet the role's requirements? Weight this appropriately — for roles that don't require specific degrees, don't over-penalize or over-reward based on field of study.
+- presentation_score (0-10): Clarity, structure, and professionalism of the resume. Penalize resumes that are thin, vague, have no dates, or pad space with filler content.
 - overall_score must equal skills_score + experience_score + education_score + presentation_score exactly.
 
 JD: {jd_text}

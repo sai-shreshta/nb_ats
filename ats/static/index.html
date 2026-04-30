@@ -1072,6 +1072,14 @@
   </div>
 
   <script>
+    /* ─── Constants ──────────────────────────────────────────────── */
+    const UPLOAD_BATCH = 10;   // files per upload request (keeps each call < 10 s)
+    const PROCESS_PARALLEL = 5; // concurrent /api/process calls per wave
+    const PROCESS_COOLDOWN = 2000; // ms between processing waves
+    const POLL_INTERVAL = 3000;   // ms between result polls
+
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
     /* ─── State ───────────────────────────────────────────────────── */
     let allCandidates = [];
     let activeTab = 'shortlisted';
@@ -1222,30 +1230,47 @@
     /* ─── Screen button click ─────────────────────────────────────── */
     screenBtn.addEventListener('click', async () => {
       if (selectedFiles.length === 0) return;
-      const jdText = jdMode === 'text' ? jdInput.value.trim() : '';
-      if (jdMode === 'text' && !jdText) return;
+      if (jdMode === 'text' && !jdInput.value.trim()) return;
       if (jdMode === 'file' && !jdFile) return;
 
-      setLoading(true, 0, 0, 0);
       allCandidates = [];
       renderResults();
-
-      const formData = new FormData();
-      if (jdMode === 'file') {
-        formData.append('jd_file', jdFile);
-      } else {
-        formData.append('jd', jdText);
-      }
-      selectedFiles.forEach(f => formData.append('files', f));
+      const total = selectedFiles.length;
 
       try {
-        const resp = await fetch('/api/screen', { method: 'POST', body: formData });
-        if (!resp.ok) {
-          const err = await resp.json().catch(() => ({ detail: resp.statusText }));
-          throw new Error(err.detail || `HTTP ${resp.status}`);
+        // ── Phase 1: resolve JD text ───────────────────────────────
+        let jd;
+        if (jdMode === 'text') {
+          jd = jdInput.value.trim();
+        } else {
+          setLoading(true, 'upload', 0, total);
+          const fd = new FormData();
+          fd.append('files', jdFile);
+          const r = await fetch('/api/extract', { method: 'POST', body: fd });
+          if (!r.ok) throw new Error('Could not read JD file.');
+          const [extracted] = await r.json();
+          if (extracted.error) throw new Error(`JD read failed: ${extracted.error}`);
+          jd = extracted.resume_text;
         }
-        const { job_id, total } = await resp.json();
-        await pollJob(job_id, total);
+
+        // ── Phase 2: extract text from all resumes in batches ──────
+        setLoading(true, 'upload', 0, total);
+        let resumeItems = [];
+
+        for (let i = 0; i < total; i += UPLOAD_BATCH) {
+          const batch = selectedFiles.slice(i, i + UPLOAD_BATCH);
+          const fd = new FormData();
+          batch.forEach(f => fd.append('files', f));
+          const r = await fetch('/api/extract', { method: 'POST', body: fd });
+          if (!r.ok) throw new Error(`Extract failed at file ${i + 1}.`);
+          resumeItems = resumeItems.concat(await r.json());
+          setLoading(true, 'upload', resumeItems.length, total);
+        }
+
+        // ── Phase 3: score all resumes in parallel waves ───────────
+        setLoading(true, 'process', 0, total);
+        await scoreAll(jd, resumeItems, total);
+
       } catch (err) {
         alert(`Screening failed: ${err.message}`);
       } finally {
@@ -1253,51 +1278,69 @@
       }
     });
 
-    /* ─── Poll job until done ─────────────────────────────────────── */
-    function pollJob(jobId, total) {
-      return new Promise((resolve, reject) => {
-        const interval = setInterval(async () => {
-          try {
-            const resp = await fetch(`/api/jobs/${jobId}`);
-            if (!resp.ok) throw new Error(`Poll error: ${resp.status}`);
-            const job = await resp.json();
+    /* ─── Score all resumes, 5 at a time with cooldown ────────────── */
+    async function scoreAll(jd, items, total) {
+      const queue = [...items];
+      let scored = 0;
 
-            const shortlisted = job.results.filter(c => c.shortlisted).length;
-            setLoading(true, total, job.completed, shortlisted);
+      while (queue.length > 0) {
+        const wave = queue.splice(0, PROCESS_PARALLEL);
 
-            if (job.status === 'done') {
-              clearInterval(interval);
-              allCandidates = job.results;
-              renderResults();
-              resolve();
-            } else if (job.status === 'error') {
-              clearInterval(interval);
-              reject(new Error(job.error || 'Screening job failed on the server.'));
-            }
-          } catch (err) {
-            clearInterval(interval);
-            reject(err);
+        const calls = wave.map(item => {
+          if (item.error) {
+            return Promise.resolve(makeErrorResult(item.filename, item.error));
           }
-        }, 1500);
-      });
+          const fd = new FormData();
+          fd.append('jd', jd);
+          fd.append('filename', item.filename);
+          fd.append('resume_text', item.resume_text);
+          return fetch('/api/score', { method: 'POST', body: fd })
+            .then(r => r.ok ? r.json() : makeErrorResult(item.filename, `Server error ${r.status}`))
+            .catch(e => makeErrorResult(item.filename, e.message));
+        });
+
+        const results = await Promise.all(calls);
+        scored += results.length;
+
+        allCandidates = [...allCandidates, ...results]
+          .sort((a, b) => (b.overall_score || 0) - (a.overall_score || 0));
+        renderResults();
+
+        const shortlisted = allCandidates.filter(c => c.shortlisted).length;
+        setLoading(true, 'process', scored, total, shortlisted);
+
+        if (queue.length > 0) await sleep(PROCESS_COOLDOWN);
+      }
     }
 
-    function setLoading(on, total = 0, completed = 0, shortlisted = 0) {
+    function makeErrorResult(filename, error) {
+      return {
+        candidate_name: filename.replace(/\.[^.]+$/, ''),
+        filename,
+        overall_score: 0, skills_score: 0, experience_score: 0,
+        education_score: 0, presentation_score: 0,
+        shortlisted: false, strengths: [], gaps: [], summary: '', error,
+      };
+    }
+
+    function setLoading(on, phase = '', current = 0, total = 0, shortlisted = 0) {
       screenBtn.disabled = on;
       progressBar.classList.toggle('visible', on);
-      if (on) {
-        if (total > 0) {
-          const pct = Math.round((completed / total) * 100);
-          progressMsg.textContent = `Screened ${completed} / ${total} — ${shortlisted} shortlisted so far`;
-          progressFill.style.width = `${pct}%`;
-        } else {
-          progressMsg.textContent = 'Uploading resumes…';
-          progressFill.style.width = '0%';
-        }
-      } else {
+      if (!on) {
         progressFill.style.width = '0%';
         checkReady();
+        return;
       }
+      const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+      if (phase === 'upload') {
+        progressMsg.textContent = `Extracting resumes: ${current} / ${total}`;
+      } else if (phase === 'process') {
+        progressMsg.textContent = `Scoring: ${current} / ${total}` +
+          (shortlisted > 0 ? ` — ${shortlisted} shortlisted` : '');
+      } else {
+        progressMsg.textContent = 'Working…';
+      }
+      progressFill.style.width = `${pct}%`;
     }
 
     /* ─── Tabs ────────────────────────────────────────────────────── */
