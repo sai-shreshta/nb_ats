@@ -1111,6 +1111,44 @@
     const pillAll = document.getElementById('pill-all');
 
     /* ─────────────────────────────────────────────────────────────────── */
+    /* Extract Contact Info from Resume Text                              */
+    /* ─────────────────────────────────────────────────────────────────── */
+    function extractContactInfo(resumeText) {
+      let name = 'Unknown';
+      let email = '';
+      let phone = '';
+
+      const lines = resumeText.split('\n');
+
+      // Extract name (typically first line or line with only alphabetic characters)
+      for (const line of lines.slice(0, 5)) {
+        const trimmed = line.trim();
+        if (trimmed && /^[A-Za-z\s]+$/.test(trimmed) && trimmed.length < 50) {
+          name = trimmed;
+          break;
+        }
+      }
+
+      // Extract email
+      const emailMatch = resumeText.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/);
+      if (emailMatch) {
+        email = emailMatch[1];
+      }
+
+      // Extract phone number in +91 format
+      const phoneMatch = resumeText.match(/\+91[- ]?[0-9]{10}|[0-9]{10}(?=\D|$)/);
+      if (phoneMatch) {
+        let cleanPhone = phoneMatch[0].replace(/[- ]/g, '');
+        if (!cleanPhone.startsWith('+91')) {
+          cleanPhone = '+91' + cleanPhone;
+        }
+        phone = cleanPhone;
+      }
+
+      return { name, email, phone };
+    }
+
+    /* ─────────────────────────────────────────────────────────────────── */
     /* JD Mode Toggle                                                      */
     /* ─────────────────────────────────────────────────────────────────── */
     jdTabText.addEventListener('click', () => {
@@ -1266,6 +1304,13 @@
               try {
                 const scoreResponse = await fetch('/api/score', { method: 'POST', body: scoreFormData });
                 const result = await scoreResponse.json();
+                
+                // Extract contact info from resume text
+                const contactInfo = extractContactInfo(item.resume_text || '');
+                result.contact_name = contactInfo.name;
+                result.contact_email = contactInfo.email;
+                result.contact_phone = contactInfo.phone;
+                
                 allResults.push(result);
                 processed++;
                 updateProgress(processed, files.length);
@@ -1399,7 +1444,7 @@
     }
 
     /* ─────────────────────────────────────────────────────────────────── */
-    /* Export CSV - UPDATED with Name, Phone, Email columns at front      */
+    /* Export CSV - Automatically extracted from resumes                   */
     /* ─────────────────────────────────────────────────────────────────── */
     function exportToCSV(results) {
       const headers = [
@@ -1419,9 +1464,9 @@
       ];
 
       const rows = results.map((r) => [
-        r.candidate_name || 'Unknown',
-        '',  // Phone Number - empty for user to fill
-        '',  // Email ID - empty for user to fill
+        r.contact_name || r.candidate_name || 'Unknown',
+        r.contact_phone || '',
+        r.contact_email || '',
         r.filename || '',
         r.overall_score || 0,
         r.skills_score || 0,
