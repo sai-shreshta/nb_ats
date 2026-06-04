@@ -154,7 +154,8 @@
       position: relative;
     }
 
-    .jd-file-drop:hover {
+    .jd-file-drop:hover,
+    .jd-file-drop.dragover {
       border-color: var(--primary);
       background: var(--primary-light);
     }
@@ -1003,24 +1004,24 @@
         <div class="progress-track">
           <div class="progress-fill"></div>
         </div>
-        <div id="progress-msg">Screening 0 / 0</div>
+        <p id="progress-msg">Processing resumes…</p>
       </div>
 
       <!-- Screen button -->
       <button id="screen-btn" disabled>
-        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
         Screen Resumes
       </button>
     </aside>
 
     <!-- ── Results Panel ──────────────────────────────────────────── -->
-    <section class="results-panel">
-      <!-- Summary bar -->
+    <div class="results-panel">
       <div id="summary-bar" style="display:none;">
         <div class="stat">
-          <div class="stat-label">Total Scored</div>
+          <div class="stat-label">Total</div>
           <div class="stat-value" id="stat-total">0</div>
         </div>
         <div class="stat-divider"></div>
@@ -1031,47 +1032,45 @@
         <div class="stat-divider"></div>
         <div class="stat">
           <div class="stat-label">Avg Score</div>
-          <div class="stat-value" id="stat-avg">0</div>
+          <div class="stat-value" id="stat-avg">0%</div>
         </div>
         <div class="results-toolbar">
           <button id="export-btn" disabled>
-            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M12 15v6m-3-3h6M3 9a2 2 0 012-2h14a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
             </svg>
             Export CSV
           </button>
         </div>
       </div>
 
-      <!-- Tabs + cards -->
       <div class="tabs-row" style="display:none;">
-        <button class="tab-btn active" data-tab="shortlisted">
-          Shortlisted <span class="count-pill" id="pill-shortlisted">0</span>
+        <button class="tab-btn active" data-tab="shortlisted" id="pill-shortlisted">
+          Shortlisted
+          <span class="count-pill" id="pill-shortlisted-count">0</span>
         </button>
-        <button class="tab-btn" data-tab="all">
-          All Results <span class="count-pill" id="pill-all">0</span>
+        <button class="tab-btn" data-tab="all" id="pill-all">
+          All Candidates
+          <span class="count-pill" id="pill-all-count">0</span>
         </button>
       </div>
+
       <div class="cards-container">
         <div class="empty-state">
           <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round"
               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <p>Upload resumes and click "Screen Resumes" to begin</p>
-          <small>Results will appear here</small>
+          <p>No results yet</p>
+          <small>Fill in the job description and upload resumes to screen candidates</small>
         </div>
       </div>
-    </section>
+    </div>
+
   </div>
 
   <script>
-    /* ─────────────────────────────────────────────────────────────────── */
-    /* State                                                               */
-    /* ─────────────────────────────────────────────────────────────────── */
-    let allResults = [];
-    const fileStore = new Map();
-
     /* ─────────────────────────────────────────────────────────────────── */
     /* DOM elements                                                        */
     /* ─────────────────────────────────────────────────────────────────── */
@@ -1111,46 +1110,96 @@
     const pillAll = document.getElementById('pill-all');
 
     /* ─────────────────────────────────────────────────────────────────── */
-    /* Extract Contact Info from Resume Text                              */
+    /* Drag and Drop Setup                                                 */
     /* ─────────────────────────────────────────────────────────────────── */
-    function extractContactInfo(resumeText) {
-      let name = 'Unknown';
-      let email = '';
-      let phone = '';
+    function setupDragDrop(zone, fileInputElement, onFilesSelected) {
+      // Prevent default drag behaviors
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        zone.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false);
+      });
 
-      const lines = resumeText.split('\n');
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
 
-      // Extract name (typically first line or line with only alphabetic characters)
-      for (const line of lines.slice(0, 5)) {
-        const trimmed = line.trim();
-        if (trimmed && /^[A-Za-z\s]+$/.test(trimmed) && trimmed.length < 50) {
-          name = trimmed;
-          break;
+      // Highlight drop zone on drag
+      ['dragenter', 'dragover'].forEach(eventName => {
+        zone.addEventListener(eventName, () => {
+          zone.classList.add('dragover');
+        });
+      });
+
+      // Remove highlight on leave/drop
+      ['dragleave', 'drop'].forEach(eventName => {
+        zone.addEventListener(eventName, () => {
+          zone.classList.remove('dragover');
+        });
+      });
+
+      // Handle drop
+      zone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        fileInputElement.files = files;
+        onFilesSelected();
+      });
+    }
+
+    /* ─────────────────────────────────────────────────────────────────── */
+    /* File handling for resume uploads                                    */
+    /* ─────────────────────────────────────────────────────────────────── */
+    let selectedFiles = new DataTransfer();
+
+    function handleResumeSelection() {
+      const files = fileInput.files || folderInput.files || [];
+      if (files.length > 0) {
+        selectedFiles = new DataTransfer();
+        for (let file of files) {
+          if (file.name.endsWith('.pdf') || file.name.endsWith('.docx')) {
+            selectedFiles.items.add(file);
+          }
         }
       }
+      updateFileList();
+      updateScreenBtn();
+    }
 
-      // Extract email
-      const emailMatch = resumeText.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/);
-      if (emailMatch) {
-        email = emailMatch[1];
+    function updateFileList() {
+      const files = selectedFiles.files;
+      fileList.innerHTML = '';
+
+      if (files.length === 0) {
+        fileListWrapper.style.display = 'none';
+        return;
       }
 
-      // Extract phone number in +91 format
-      const phoneMatch = resumeText.match(/\+91[- ]?[0-9]{10}|[0-9]{10}(?=\D|$)/);
-      if (phoneMatch) {
-        let cleanPhone = phoneMatch[0].replace(/[- ]/g, '');
-        if (!cleanPhone.startsWith('+91')) {
-          cleanPhone = '+91' + cleanPhone;
-        }
-        phone = cleanPhone;
+      fileListWrapper.style.display = 'block';
+
+      for (let file of files) {
+        const ext = file.name.split('.').pop().toUpperCase();
+        const pill = document.createElement('div');
+        pill.className = 'file-pill';
+        pill.innerHTML = `
+          <span class="ext">${ext}</span>
+          <span class="name">${file.name}</span>
+        `;
+        fileList.appendChild(pill);
       }
 
-      return { name, email, phone };
+      fileCount.textContent = `${files.length} file${files.length !== 1 ? 's' : ''} selected`;
+    }
+
+    function updateScreenBtn() {
+      const hasJD = jdInput.value.trim().length > 0;
+      const hasFiles = selectedFiles.files.length > 0;
+      screenBtn.disabled = !(hasJD && hasFiles);
     }
 
     /* ─────────────────────────────────────────────────────────────────── */
     /* JD Mode Toggle                                                      */
-    /* ─────────────────────────────────────────────────────────────────── */
+    /* ────────────────────────────────────────���────────────────────────── */
     jdTabText.addEventListener('click', () => {
       jdTabText.classList.add('active');
       jdTabFile.classList.remove('active');
@@ -1166,335 +1215,203 @@
     });
 
     /* ─────────────────────────────────────────────────────────────────── */
-    /* JD File Upload                                                      */
+    /* JD File Drop Zone                                                   */
     /* ─────────────────────────────────────────────────────────────────── */
-    jdFileInput.addEventListener('change', async (e) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        const text = await extractText(file);
-        jdInput.value = text;
-        updateJDFileSelected(file.name);
-        checkFormValidity();
+    setupDragDrop(jdDropZone, jdFileInput, () => {
+      if (jdFileInput.files.length > 0) {
+        const file = jdFileInput.files[0];
+        jdFileSelected.innerHTML = `
+          <span class="ext">${file.name.split('.').pop().toUpperCase()}</span>
+          <span>${file.name}</span>
+        `;
+        jdFileSelected.style.display = 'flex';
       }
     });
 
-    jdDropZone.addEventListener('dragover', () => jdDropZone.classList.add('dragover'));
-    jdDropZone.addEventListener('dragleave', () => jdDropZone.classList.remove('dragover'));
-    jdDropZone.addEventListener('drop', async (e) => {
-      e.preventDefault();
-      jdDropZone.classList.remove('dragover');
-      const file = e.dataTransfer?.files?.[0];
-      if (file && (file.name.endsWith('.pdf') || file.name.endsWith('.docx'))) {
-        jdFileInput.files = e.dataTransfer.files;
-        const text = await extractText(file);
-        jdInput.value = text;
-        updateJDFileSelected(file.name);
-        checkFormValidity();
+    /* ─────────────────────────────────────────────────────────────────── */
+    /* Resume File Inputs & Drop Zone                                      */
+    /* ─────────────────────────────────────────────────────────────────── */
+    fileInput.addEventListener('change', handleResumeSelection);
+    folderInput.addEventListener('change', handleResumeSelection);
+
+    setupDragDrop(dropZone, dropFileInput, () => {
+      for (let file of dropFileInput.files) {
+        selectedFiles.items.add(file);
       }
+      updateFileList();
+      updateScreenBtn();
     });
 
-    function updateJDFileSelected(name) {
-      jdFileSelected.innerHTML = `<span class="ext">${name.split('.').pop().toUpperCase()}</span> ${name}`;
-      jdFileSelected.style.display = 'flex';
-    }
+    /* ─────────────────────────────────────────────────────────────────── */
+    /* JD Input Monitor                                                    */
+    /* ─────────────────────────────────────────────────────────────────── */
+    jdInput.addEventListener('input', updateScreenBtn);
 
     /* ─────────────────────────────────────────────────────────────────── */
-    /* Resume File Upload                                                  */
+    /* Screen Button                                                       */
     /* ─────────────────────────────────────────────────────────────────── */
-    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
-    folderInput.addEventListener('change', (e) => handleFiles(e.target.files));
-    dropFileInput.addEventListener('change', (e) => handleFiles(e.target.files));
-
-    dropZone.addEventListener('dragover', () => dropZone.classList.add('dragover'));
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-    dropZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropZone.classList.remove('dragover');
-      handleFiles(e.dataTransfer?.files);
-    });
-
-    function handleFiles(files) {
-      if (!files) return;
-      for (const file of files) {
-        if (file.name.endsWith('.pdf') || file.name.endsWith('.docx')) {
-          fileStore.set(file.name, file);
-        }
-      }
-      renderFileList();
-      checkFormValidity();
-    }
-
-    function renderFileList() {
-      fileList.innerHTML = '';
-      for (const [name] of fileStore) {
-        const pill = document.createElement('div');
-        pill.className = 'file-pill';
-        const ext = name.split('.').pop().toUpperCase();
-        pill.innerHTML = `<span class="ext">${ext}</span><span class="name">${name}</span>`;
-        fileList.appendChild(pill);
-      }
-      fileListWrapper.style.display = fileStore.size > 0 ? 'block' : 'none';
-      fileCount.textContent = `${fileStore.size} file${fileStore.size === 1 ? '' : 's'} selected`;
-    }
-
-    /* ─────────────────────────────────────────────────────────────────── */
-    /* Form Validation                                                     */
-    /* ─────────────────────────────────────────────────────────────────── */
-    function checkFormValidity() {
-      const hasJD = jdInput.value.trim().length > 0;
-      const hasResumes = fileStore.size > 0;
-      screenBtn.disabled = !(hasJD && hasResumes);
-    }
-
-    /* ─────────────────────────────────────────────────────────────────── */
-    /* Extract Text from Files                                             */
-    /* ─────────────────────────────────────────────────────────────────── */
-    async function extractText(file) {
-      const formData = new FormData();
-      formData.append('files', file);
-
-      try {
-        const response = await fetch('/api/extract', { method: 'POST', body: formData });
-        const data = await response.json();
-        return data[0]?.resume_text || '';
-      } catch (err) {
-        console.error('Error extracting text:', err);
-        return '';
-      }
-    }
-
-    /* ─────────────────────────────────────────────────────────────────── */
-    /* Score Resumes                                                       */
-    /* ─────────────────────────────────────────────────────────────────── */
-    screenBtn.addEventListener('click', scoreResumes);
-
-    async function scoreResumes() {
+    screenBtn.addEventListener('click', async () => {
       const jd = jdInput.value.trim();
-      if (!jd || fileStore.size === 0) return;
+      const files = selectedFiles.files;
+
+      if (!jd || files.length === 0) {
+        alert('Please provide a job description and upload resumes');
+        return;
+      }
 
       screenBtn.disabled = true;
       progressBar.classList.add('visible');
-      allResults = [];
-      cardsContainer.innerHTML = '';
-      summaryBar.style.display = 'none';
-      tabsRow.style.display = 'none';
+      progressFill.style.width = '0%';
 
-      const files = Array.from(fileStore.values());
-      const batchSize = 10;
-      let processed = 0;
-
-      for (let i = 0; i < files.length; i += batchSize) {
-        const batch = files.slice(i, i + batchSize);
+      try {
         const formData = new FormData();
-        batch.forEach((file) => formData.append('files', file));
-
-        try {
-          const response = await fetch('/api/extract', { method: 'POST', body: formData });
-          const extracted = await response.json();
-
-          // Score up to 5 resumes in parallel
-          const scoringWaves = [];
-          for (let j = 0; j < extracted.length; j += 5) {
-            const wave = extracted.slice(j, j + 5).map(async (item) => {
-              const scoreFormData = new FormData();
-              scoreFormData.append('jd', jd);
-              scoreFormData.append('filename', item.filename);
-              scoreFormData.append('resume_text', item.resume_text || '');
-
-              try {
-                const scoreResponse = await fetch('/api/score', { method: 'POST', body: scoreFormData });
-                const result = await scoreResponse.json();
-                
-                // Extract contact info from resume text
-                const contactInfo = extractContactInfo(item.resume_text || '');
-                result.contact_name = contactInfo.name;
-                result.contact_email = contactInfo.email;
-                result.contact_phone = contactInfo.phone;
-                
-                allResults.push(result);
-                processed++;
-                updateProgress(processed, files.length);
-              } catch (err) {
-                console.error('Error scoring resume:', err);
-              }
-            });
-            await Promise.all(wave);
-            await new Promise((resolve) => setTimeout(resolve, 500));
-          }
-        } catch (err) {
-          console.error('Error extracting batch:', err);
+        formData.append('jd', jd);
+        for (let file of files) {
+          formData.append('files', file);
         }
+
+        const response = await fetch('/api/screen', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const results = await response.json();
+        displayResults(results);
+        progressFill.style.width = '100%';
+
+        setTimeout(() => {
+          progressBar.classList.remove('visible');
+          screenBtn.disabled = false;
+        }, 500);
+      } catch (error) {
+        console.error('Error:', error);
+        progressMsg.textContent = 'Error processing resumes';
+        setTimeout(() => {
+          progressBar.classList.remove('visible');
+          screenBtn.disabled = false;
+        }, 2000);
       }
-
-      progressBar.classList.remove('visible');
-      screenBtn.disabled = false;
-      displayResults();
-    }
-
-    function updateProgress(current, total) {
-      const percent = Math.round((current / total) * 100);
-      progressFill.style.width = `${percent}%`;
-      progressMsg.textContent = `Screening ${current} / ${total}`;
-    }
+    });
 
     /* ─────────────────────────────────────────────────────────────────── */
     /* Display Results                                                     */
     /* ─────────────────────────────────────────────────────────────────── */
-    function displayResults() {
-      const shortlisted = allResults.filter((r) => r.shortlisted);
-      const total = allResults.length;
-      const avg = total > 0 ? Math.round(allResults.reduce((sum, r) => sum + (r.overall_score || 0), 0) / total) : 0;
-
-      statTotal.textContent = total;
-      statPassed.textContent = shortlisted.length;
-      statAvg.textContent = avg;
-
-      pillShortlisted.textContent = shortlisted.length;
-      pillAll.textContent = total;
-
+    function displayResults(results) {
       summaryBar.style.display = 'flex';
       tabsRow.style.display = 'flex';
 
-      const activeTab = document.querySelector('.tab-btn.active')?.dataset?.tab || 'shortlisted';
-      renderCards(activeTab === 'shortlisted' ? shortlisted : allResults);
+      const shortlisted = results.filter(r => r.shortlisted);
+      const avgScore = results.length > 0 ? Math.round(results.reduce((sum, r) => sum + r.overall_score, 0) / results.length) : 0;
 
-      tabBtns.forEach((btn) => {
+      statTotal.textContent = results.length;
+      statPassed.textContent = shortlisted.length;
+      statAvg.textContent = `${avgScore}%`;
+
+      pillShortlisted.querySelector('.count-pill').textContent = shortlisted.length;
+      pillAll.querySelector('.count-pill').textContent = results.length;
+
+      cardsContainer.innerHTML = '';
+      renderCards(results.filter(r => r.shortlisted));
+      exportBtn.disabled = false;
+
+      tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-          tabBtns.forEach((b) => b.classList.remove('active'));
+          tabBtns.forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
-          renderCards(btn.dataset.tab === 'shortlisted' ? shortlisted : allResults);
+          const tab = btn.getAttribute('data-tab');
+          cardsContainer.innerHTML = '';
+          renderCards(tab === 'shortlisted' ? shortlisted : results);
         });
       });
-
-      exportBtn.disabled = false;
-      exportBtn.addEventListener('click', () => exportToCSV(allResults));
     }
 
-    function renderCards(results) {
-      cardsContainer.innerHTML = '';
-      if (results.length === 0) {
-        cardsContainer.innerHTML =
-          '<div class="empty-state"><p>No results to display</p></div>';
+    function renderCards(candidates) {
+      if (candidates.length === 0) {
+        cardsContainer.innerHTML = `
+          <div class="empty-state">
+            <p>No candidates match the filter</p>
+          </div>
+        `;
         return;
       }
 
-      results.forEach((result) => {
+      candidates.forEach(candidate => {
+        const scoreClass = candidate.overall_score >= 70 ? 'score-green' : candidate.overall_score >= 50 ? 'score-yellow' : 'score-red';
         const card = document.createElement('div');
         card.className = 'candidate-card';
-        const scoreClass = result.overall_score >= 70 ? 'score-green' : result.overall_score >= 50 ? 'score-yellow' : 'score-red';
-
-        let errHTML = '';
-        if (result.error) {
-          errHTML = `<div class="error-chip">⚠ ${result.error}</div>`;
-        }
-
-        const strengthsList = (result.strengths || []).map((s) => `<div class="list-item"><div class="dot green"></div>${s}</div>`).join('');
-        const gapsList = (result.gaps || []).map((g) => `<div class="list-item"><div class="dot red"></div>${g}</div>`).join('');
-
         card.innerHTML = `
-          ${errHTML}
           <div class="card-header">
             <div class="card-identity">
-              <div class="candidate-name">${result.candidate_name || 'Unknown'}</div>
-              <div class="candidate-file">${result.filename}</div>
+              <div class="candidate-name">${candidate.candidate_name}</div>
+              <div class="candidate-file">${candidate.filename}</div>
             </div>
             <div class="card-badges">
               <div class="score-badge ${scoreClass}">
-                ${result.overall_score}<small>/ 100</small>
+                ${candidate.overall_score}
+                <small>/ 100</small>
               </div>
-              ${result.shortlisted ? '<div class="shortlisted-chip">✓ Shortlisted</div>' : ''}
+              ${candidate.shortlisted ? '<div class="shortlisted-chip"><span>✓</span> Shortlisted</div>' : ''}
             </div>
           </div>
           <div class="score-bars">
             <div class="score-bar-row">
               <div class="bar-label">Skills</div>
-              <div class="bar-track"><div class="bar-fill skills" style="width: ${(result.skills_score / 40) * 100}%"></div></div>
-              <div class="bar-score">${result.skills_score}/40</div>
+              <div class="bar-track"><div class="bar-fill skills" style="width: ${candidate.skills_score}%"></div></div>
+              <div class="bar-score">${candidate.skills_score}</div>
             </div>
             <div class="score-bar-row">
               <div class="bar-label">Experience</div>
-              <div class="bar-track"><div class="bar-fill experience" style="width: ${(result.experience_score / 30) * 100}%"></div></div>
-              <div class="bar-score">${result.experience_score}/30</div>
+              <div class="bar-track"><div class="bar-fill experience" style="width: ${candidate.experience_score}%"></div></div>
+              <div class="bar-score">${candidate.experience_score}</div>
             </div>
             <div class="score-bar-row">
               <div class="bar-label">Education</div>
-              <div class="bar-track"><div class="bar-fill education" style="width: ${(result.education_score / 20) * 100}%"></div></div>
-              <div class="bar-score">${result.education_score}/20</div>
+              <div class="bar-track"><div class="bar-fill education" style="width: ${candidate.education_score}%"></div></div>
+              <div class="bar-score">${candidate.education_score}</div>
             </div>
             <div class="score-bar-row">
               <div class="bar-label">Presentation</div>
-              <div class="bar-track"><div class="bar-fill presentation" style="width: ${(result.presentation_score / 10) * 100}%"></div></div>
-              <div class="bar-score">${result.presentation_score}/10</div>
+              <div class="bar-track"><div class="bar-fill presentation" style="width: ${candidate.presentation_score}%"></div></div>
+              <div class="bar-score">${candidate.presentation_score}</div>
             </div>
           </div>
           <div class="card-lists">
             <div class="list-box">
-              <div class="list-box-title green">Strengths</div>
-              ${strengthsList || '<div class="list-item">—</div>'}
+              <div class="list-box-title green">✓ Strengths</div>
+              ${candidate.strengths.map(s => `<div class="list-item"><span class="dot green"></span><span>${s}</span></div>`).join('')}
             </div>
             <div class="list-box">
-              <div class="list-box-title red">Gaps</div>
-              ${gapsList || '<div class="list-item">—</div>'}
+              <div class="list-box-title red">✗ Gaps</div>
+              ${candidate.gaps.map(g => `<div class="list-item"><span class="dot red"></span><span>${g}</span></div>`).join('')}
             </div>
           </div>
-          <div class="card-summary">${result.summary || ''}</div>
+          <div class="card-summary">${candidate.summary}</div>
         `;
         cardsContainer.appendChild(card);
       });
     }
 
     /* ─────────────────────────────────────────────────────────────────── */
-    /* Export CSV - Automatically extracted from resumes                   */
+    /* Export CSV                                                          */
     /* ─────────────────────────────────────────────────────────────────── */
-    function exportToCSV(results) {
-      const headers = [
-        'Name',
-        'Phone Number (strictly in +91 XXXXXXXXXX format)',
-        'Email ID (optional)',
-        'Filename',
-        'Overall Score',
-        'Skills Score',
-        'Experience Score',
-        'Education Score',
-        'Presentation Score',
-        'Shortlisted',
-        'Strengths',
-        'Gaps',
-        'Summary'
-      ];
+    exportBtn.addEventListener('click', async () => {
+      const response = await fetch('/api/screen', {
+        method: 'POST',
+        body: new FormData(document.querySelector('form') || new FormData()),
+        headers: { 'Accept': 'text/csv' }
+      });
 
-      const rows = results.map((r) => [
-        r.contact_name || r.candidate_name || 'Unknown',
-        r.contact_phone || '',
-        r.contact_email || '',
-        r.filename || '',
-        r.overall_score || 0,
-        r.skills_score || 0,
-        r.experience_score || 0,
-        r.education_score || 0,
-        r.presentation_score || 0,
-        r.shortlisted ? 'Yes' : 'No',
-        (r.strengths || []).join('; '),
-        (r.gaps || []).join('; '),
-        r.summary || ''
-      ]);
-
-      const csvContent = [
-        headers.map((h) => `"${h}"`).join(','),
-        ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      ].join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.setAttribute('href', URL.createObjectURL(blob));
-      link.setAttribute('download', `ats-results-${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    checkFormValidity();
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'screening_results.csv';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+    });
   </script>
 
 </body>
