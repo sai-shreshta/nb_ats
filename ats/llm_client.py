@@ -40,6 +40,8 @@ Then evaluate the resume with these principles:
 Return ONLY a valid JSON object with this exact structure, no other text:
 {{
   "candidate_name": "extracted full name or Unknown",
+  "phone_number": "phone number in +91 XXXXXXXXXX format, or empty string if not found",
+  "email": "email address or empty string if not found",
   "overall_score": <integer 0-100>,
   "skills_score": <integer 0-40>,
   "experience_score": <integer 0-30>,
@@ -50,6 +52,8 @@ Return ONLY a valid JSON object with this exact structure, no other text:
   "gaps": ["gap 1", "gap 2"],
   "summary": "2-3 sentence human readable summary of this candidate's fit"
 }}
+
+For phone_number: extract the candidate's phone number and format it as +91 XXXXXXXXXX (10 digits after +91, separated by a space). If the number is written without country code and appears to be Indian (10 digits starting with 6-9), prepend +91. If no phone number is found, return empty string.
 
 Scoring rubric:
 - skills_score (0-40): How well do the candidate's demonstrated skills match what the JD actually requires day-to-day? Required skills carry 3x more weight than preferred. Penalize if skills listed are generic soft skills with no supporting work evidence.

@@ -1151,6 +1151,7 @@
     /* File handling for resume uploads                                    */
     /* ─────────────────────────────────────────────────────────────────── */
     let selectedFiles = new DataTransfer();
+    let lastResults = [];
 
     function handleResumeSelection() {
       const files = fileInput.files || folderInput.files || [];
@@ -1252,7 +1253,7 @@
     /* ─────────────────────────────────────────────────────────────────── */
     screenBtn.addEventListener('click', async () => {
       const jd = jdInput.value.trim();
-      const files = selectedFiles.files;
+      const files = [...selectedFiles.files];
 
       if (!jd || files.length === 0) {
         alert('Please provide a job description and upload resumes');
@@ -1262,24 +1263,50 @@
       screenBtn.disabled = true;
       progressBar.classList.add('visible');
       progressFill.style.width = '0%';
+      progressMsg.textContent = 'Extracting resume text...';
 
       try {
-        const formData = new FormData();
-        formData.append('jd', jd);
-        for (let file of files) {
-          formData.append('files', file);
+        // Step 1: extract text from all resume files
+        const extractForm = new FormData();
+        for (let file of files) extractForm.append('files', file);
+
+        const extractResp = await fetch('/api/extract', { method: 'POST', body: extractForm });
+        if (!extractResp.ok) throw new Error(`Extract failed: ${extractResp.status}`);
+        const extracted = await extractResp.json();
+
+        // Step 2: score each resume against the JD in parallel batches
+        const results = [];
+        let completed = 0;
+        const BATCH_SIZE = 5;
+        progressMsg.textContent = `Scoring 0 / ${extracted.length} resumes...`;
+
+        for (let i = 0; i < extracted.length; i += BATCH_SIZE) {
+          const batch = extracted.slice(i, i + BATCH_SIZE);
+          const batchResults = await Promise.all(batch.map(async ({ filename, resume_text, error }) => {
+            if (error || !resume_text) {
+              const stem = filename ? filename.split('.').slice(0, -1).join('.') || filename : 'Unknown';
+              return { candidate_name: stem, filename: filename || 'unknown', overall_score: 0, skills_score: 0, experience_score: 0, education_score: 0, presentation_score: 0, shortlisted: false, strengths: [], gaps: [], summary: 'Could not extract text from this file.', error: error || 'No text extracted' };
+            }
+            const scoreForm = new FormData();
+            scoreForm.append('jd', jd);
+            scoreForm.append('filename', filename);
+            scoreForm.append('resume_text', resume_text);
+            const scoreResp = await fetch('/api/score', { method: 'POST', body: scoreForm });
+            if (!scoreResp.ok) throw new Error(`Score failed for ${filename}: ${scoreResp.status}`);
+            return await scoreResp.json();
+          }));
+
+          results.push(...batchResults);
+          completed += batchResults.length;
+          const pct = Math.round((completed / extracted.length) * 90) + 5;
+          progressFill.style.width = `${pct}%`;
+          progressMsg.textContent = `Scoring ${completed} / ${extracted.length} resumes...`;
         }
 
-        const response = await fetch('/api/screen', {
-          method: 'POST',
-          body: formData
-        });
-
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-        const results = await response.json();
+        lastResults = results;
         displayResults(results);
         progressFill.style.width = '100%';
+        progressMsg.textContent = 'Done!';
 
         setTimeout(() => {
           progressBar.classList.remove('visible');
@@ -1396,21 +1423,37 @@
     /* ─────────────────────────────────────────────────────────────────── */
     /* Export CSV                                                          */
     /* ─────────────────────────────────────────────────────────────────── */
-    exportBtn.addEventListener('click', async () => {
-      const response = await fetch('/api/screen', {
-        method: 'POST',
-        body: new FormData(document.querySelector('form') || new FormData()),
-        headers: { 'Accept': 'text/csv' }
-      });
+    exportBtn.addEventListener('click', () => {
+      if (!lastResults.length) return;
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const escape = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const headers = ['Name', 'Phone Number', 'Email ID', 'Filename', 'Overall Score', 'Skills', 'Experience', 'Education', 'Presentation', 'Shortlisted', 'Strengths', 'Gaps', 'Summary'];
+      const rows = lastResults.map(r => [
+        escape(r.candidate_name),
+        escape(r.phone_number || ''),
+        escape(r.email || ''),
+        escape(r.filename),
+        r.overall_score,
+        r.skills_score,
+        r.experience_score,
+        r.education_score,
+        r.presentation_score,
+        r.shortlisted ? 'Yes' : 'No',
+        escape((r.strengths || []).join('; ')),
+        escape((r.gaps || []).join('; ')),
+        escape(r.summary),
+      ]);
+
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = 'screening_results.csv';
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
+      URL.revokeObjectURL(url);
+      a.remove();
     });
   </script>
 
