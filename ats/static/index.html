@@ -1000,531 +1000,458 @@
       <!-- Progress -->
       <div id="progress-bar">
         <div class="spinner"></div>
-        <p id="progress-msg">Uploading resumes…</p>
-        <div class="progress-track" style="width:100%;">
-          <div class="progress-fill" id="progress-fill"></div>
+        <div class="progress-track">
+          <div class="progress-fill"></div>
         </div>
+        <div id="progress-msg">Screening 0 / 0</div>
       </div>
 
-      <!-- CTA -->
+      <!-- Screen button -->
       <button id="screen-btn" disabled>
-        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
         </svg>
         Screen Resumes
       </button>
     </aside>
 
-    <!-- ── Results Panel ─────────────────────────────────────────── -->
-    <section class="results-panel" id="results-panel">
-
+    <!-- ── Results Panel ──────────────────────────────────────────── -->
+    <section class="results-panel">
       <!-- Summary bar -->
-      <div id="summary-bar">
+      <div id="summary-bar" style="display:none;">
         <div class="stat">
-          <span class="stat-label">Screened</span>
-          <span class="stat-value" id="stat-total">—</span>
+          <div class="stat-label">Total Scored</div>
+          <div class="stat-value" id="stat-total">0</div>
         </div>
         <div class="stat-divider"></div>
         <div class="stat">
-          <span class="stat-label">Shortlisted</span>
-          <span class="stat-value green" id="stat-shortlisted">—</span>
+          <div class="stat-label">Shortlisted</div>
+          <div class="stat-value green" id="stat-passed">0</div>
         </div>
         <div class="stat-divider"></div>
         <div class="stat">
-          <span class="stat-label">Avg Score</span>
-          <span class="stat-value" id="stat-avg">—</span>
+          <div class="stat-label">Avg Score</div>
+          <div class="stat-value" id="stat-avg">0</div>
         </div>
         <div class="results-toolbar">
           <button id="export-btn" disabled>
             <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             Export CSV
           </button>
         </div>
       </div>
 
-      <!-- Tabs -->
-      <div class="tabs-row">
-        <button class="tab-btn active" id="tab-shortlisted" data-tab="shortlisted">
-          Shortlisted <span class="count-pill" id="shortlisted-pill">0</span>
+      <!-- Tabs + cards -->
+      <div class="tabs-row" style="display:none;">
+        <button class="tab-btn active" data-tab="shortlisted">
+          Shortlisted <span class="count-pill" id="pill-shortlisted">0</span>
         </button>
-        <button class="tab-btn" id="tab-all" data-tab="all">
-          All Candidates <span class="count-pill" id="all-pill">0</span>
+        <button class="tab-btn" data-tab="all">
+          All Results <span class="count-pill" id="pill-all">0</span>
         </button>
       </div>
-
-      <!-- Cards -->
-      <div class="cards-container" id="cards-container">
-        <div class="empty-state" id="empty-state">
-          <svg width="64" height="64" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2">
+      <div class="cards-container">
+        <div class="empty-state">
+          <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round"
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <p>No results yet</p>
-          <small>Paste a JD, upload resumes, then click "Screen Resumes"</small>
+          <p>Upload resumes and click "Screen Resumes" to begin</p>
+          <small>Results will appear here</small>
         </div>
-        <div id="cards-list" style="display:none;"></div>
       </div>
-
     </section>
   </div>
 
   <script>
-    /* ─── Constants ──────────────────────────────────────────────── */
-    const UPLOAD_BATCH = 10;   // files per upload request (keeps each call < 10 s)
-    const PROCESS_PARALLEL = 5; // concurrent /api/process calls per wave
-    const PROCESS_COOLDOWN = 2000; // ms between processing waves
-    const POLL_INTERVAL = 3000;   // ms between result polls
+    /* ─────────────────────────────────────────────────────────────────── */
+    /* State                                                               */
+    /* ─────────────────────────────────────────────────────────────────── */
+    let allResults = [];
+    const fileStore = new Map();
 
-    const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-    /* ─── State ───────────────────────────────────────────────────── */
-    let allCandidates = [];
-    let activeTab = 'shortlisted';
-    let selectedFiles = [];   // resume files
-    let jdMode = 'text';      // 'text' | 'file'
-    let jdFile = null;        // File object when jdMode === 'file'
-
-    /* ─── DOM refs ────────────────────────────────────────────────── */
-    const jdInput = document.getElementById('jd-input');
-    const jdTabText = document.getElementById('jd-tab-text');
-    const jdTabFile = document.getElementById('jd-tab-file');
+    /* ─────────────────────────────────────────────────────────────────── */
+    /* DOM elements                                                        */
+    /* ─────────────────────────────────────────────────────────────────── */
     const jdTextPanel = document.getElementById('jd-text-panel');
     const jdFilePanel = document.getElementById('jd-file-panel');
+    const jdTabText = document.getElementById('jd-tab-text');
+    const jdTabFile = document.getElementById('jd-tab-file');
+    const jdInput = document.getElementById('jd-input');
     const jdFileInput = document.getElementById('jd-file-input');
-    const jdDropZone = document.getElementById('jd-drop-zone');
     const jdFileSelected = document.getElementById('jd-file-selected');
+    const jdDropZone = document.getElementById('jd-drop-zone');
+
     const fileInput = document.getElementById('file-input');
     const folderInput = document.getElementById('folder-input');
     const dropZone = document.getElementById('drop-zone');
+    const dropFileInput = document.getElementById('drop-file-input');
     const fileList = document.getElementById('file-list');
-    const fileListWrap = document.getElementById('file-list-wrapper');
+    const fileListWrapper = document.getElementById('file-list-wrapper');
     const fileCount = document.getElementById('file-count');
+
     const screenBtn = document.getElementById('screen-btn');
     const progressBar = document.getElementById('progress-bar');
+    const progressFill = document.querySelector('.progress-fill');
     const progressMsg = document.getElementById('progress-msg');
-    const progressFill = document.getElementById('progress-fill');
-    const emptyState = document.getElementById('empty-state');
-    const cardsList = document.getElementById('cards-list');
-    const exportBtn = document.getElementById('export-btn');
+
+    const summaryBar = document.getElementById('summary-bar');
+    const tabsRow = document.querySelector('.tabs-row');
+    const cardsContainer = document.querySelector('.cards-container');
+
     const statTotal = document.getElementById('stat-total');
-    const statShortlisted = document.getElementById('stat-shortlisted');
+    const statPassed = document.getElementById('stat-passed');
     const statAvg = document.getElementById('stat-avg');
-    const shortlistedPill = document.getElementById('shortlisted-pill');
-    const allPill = document.getElementById('all-pill');
+
+    const exportBtn = document.getElementById('export-btn');
     const tabBtns = document.querySelectorAll('.tab-btn');
+    const pillShortlisted = document.getElementById('pill-shortlisted');
+    const pillAll = document.getElementById('pill-all');
 
-    /* ─── JD mode toggle ─────────────────────────────────────────── */
-    function setJdMode(mode) {
-      jdMode = mode;
-      jdTabText.classList.toggle('active', mode === 'text');
-      jdTabFile.classList.toggle('active', mode === 'file');
-      jdTextPanel.style.display = mode === 'text' ? '' : 'none';
-      jdFilePanel.style.display = mode === 'file' ? '' : 'none';
-      if (mode === 'text') { jdFile = null; }
-      checkReady();
-    }
-    jdTabText.addEventListener('click', () => setJdMode('text'));
-    jdTabFile.addEventListener('click', () => setJdMode('file'));
+    /* ─────────────────────────────────────────────────────────────────── */
+    /* JD Mode Toggle                                                      */
+    /* ─────────────────────────────────────────────────────────────────── */
+    jdTabText.addEventListener('click', () => {
+      jdTabText.classList.add('active');
+      jdTabFile.classList.remove('active');
+      jdTextPanel.style.display = 'block';
+      jdFilePanel.style.display = 'none';
+    });
 
-    /* ─── JD file input ──────────────────────────────────────────── */
-    function applyJdFile(f) {
-      if (!f) return;
-      const ext = f.name.split('.').pop().toLowerCase();
-      if (ext !== 'pdf' && ext !== 'docx') {
-        alert('Please upload a .pdf or .docx file for the Job Description.');
-        return;
+    jdTabFile.addEventListener('click', () => {
+      jdTabFile.classList.add('active');
+      jdTabText.classList.remove('active');
+      jdTextPanel.style.display = 'none';
+      jdFilePanel.style.display = 'block';
+    });
+
+    /* ─────────────────────────────────────────────────────────────────── */
+    /* JD File Upload                                                      */
+    /* ─────────────────────────────────────────────────────────────────── */
+    jdFileInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        const text = await extractText(file);
+        jdInput.value = text;
+        updateJDFileSelected(file.name);
+        checkFormValidity();
       }
-      jdFile = f;
-      jdFileSelected.style.display = 'flex';
-      jdFileSelected.innerHTML = `
-      <span class="ext">${ext.toUpperCase()}</span>
-      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(f.name)}">${escHtml(f.name)}</span>
-    `;
-      jdDropZone.style.display = 'none';
-      checkReady();
-    }
-    jdFileInput.addEventListener('change', () => applyJdFile(jdFileInput.files[0]));
-    jdDropZone.addEventListener('dragover', e => { e.preventDefault(); jdDropZone.style.borderColor = 'var(--primary)'; });
-    jdDropZone.addEventListener('dragleave', () => jdDropZone.style.borderColor = '');
-    jdDropZone.addEventListener('drop', e => {
+    });
+
+    jdDropZone.addEventListener('dragover', () => jdDropZone.classList.add('dragover'));
+    jdDropZone.addEventListener('dragleave', () => jdDropZone.classList.remove('dragover'));
+    jdDropZone.addEventListener('drop', async (e) => {
       e.preventDefault();
-      jdDropZone.style.borderColor = '';
-      applyJdFile(e.dataTransfer.files[0]);
-    });
-    // Allow clicking jd-file-selected to re-pick
-    jdFileSelected.addEventListener('click', () => {
-      jdFile = null;
-      jdFileSelected.style.display = 'none';
-      jdDropZone.style.display = '';
-      checkReady();
+      jdDropZone.classList.remove('dragover');
+      const file = e.dataTransfer?.files?.[0];
+      if (file && (file.name.endsWith('.pdf') || file.name.endsWith('.docx'))) {
+        jdFileInput.files = e.dataTransfer.files;
+        const text = await extractText(file);
+        jdInput.value = text;
+        updateJDFileSelected(file.name);
+        checkFormValidity();
+      }
     });
 
-    /* ─── Enable/disable screen button ───────────────────────────── */
-    function checkReady() {
-      const hasJD = jdMode === 'text'
-        ? jdInput.value.trim().length > 0
-        : jdFile !== null;
-      const hasFiles = selectedFiles.length > 0;
-      screenBtn.disabled = !(hasJD && hasFiles);
+    function updateJDFileSelected(name) {
+      jdFileSelected.innerHTML = `<span class="ext">${name.split('.').pop().toUpperCase()}</span> ${name}`;
+      jdFileSelected.style.display = 'flex';
     }
 
-    jdInput.addEventListener('input', checkReady);
+    /* ─────────────────────────────────────────────────────────────────── */
+    /* Resume File Upload                                                  */
+    /* ─────────────────────────────────────────────────────────────────── */
+    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+    folderInput.addEventListener('change', (e) => handleFiles(e.target.files));
+    dropFileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 
-    /* ─── Resume file handling ────────────────────────────────────── */
-    function mergeFiles(newFiles) {
-      // Merge new files into selectedFiles, avoid duplicates by name+size
-      const existing = new Set(selectedFiles.map(f => f.name + f.size));
-      const added = Array.from(newFiles).filter(f => {
-        const key = f.name + f.size;
-        if (existing.has(key)) return false;
-        existing.add(key);
-        return true;
-      });
-      selectedFiles = [...selectedFiles, ...added];
-      renderFileList();
-      checkReady();
-    }
-
-    fileInput.addEventListener('change', () => mergeFiles(fileInput.files));
-    folderInput.addEventListener('change', () => mergeFiles(folderInput.files));
-
-    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragover', () => dropZone.classList.add('dragover'));
     dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-    dropZone.addEventListener('drop', e => {
+    dropZone.addEventListener('drop', (e) => {
       e.preventDefault();
       dropZone.classList.remove('dragover');
-      mergeFiles(e.dataTransfer.files);
+      handleFiles(e.dataTransfer?.files);
     });
+
+    function handleFiles(files) {
+      if (!files) return;
+      for (const file of files) {
+        if (file.name.endsWith('.pdf') || file.name.endsWith('.docx')) {
+          fileStore.set(file.name, file);
+        }
+      }
+      renderFileList();
+      checkFormValidity();
+    }
 
     function renderFileList() {
       fileList.innerHTML = '';
-      if (selectedFiles.length === 0) {
-        fileListWrap.style.display = 'none';
-        return;
-      }
-      fileListWrap.style.display = 'block';
-      selectedFiles.forEach((f, idx) => {
-        const ext = f.name.split('.').pop().toUpperCase();
+      for (const [name] of fileStore) {
         const pill = document.createElement('div');
         pill.className = 'file-pill';
-        pill.style.cursor = 'pointer';
-        pill.title = 'Click to remove';
-        pill.innerHTML = `
-        <span class="ext">${ext}</span>
-        <span class="name" title="${f.name}">${f.name}</span>
-        <span style="margin-left:auto;opacity:.5;font-size:13px;">&times;</span>
-      `;
-        pill.addEventListener('click', () => {
-          selectedFiles.splice(idx, 1);
-          renderFileList();
-          checkReady();
-        });
+        const ext = name.split('.').pop().toUpperCase();
+        pill.innerHTML = `<span class="ext">${ext}</span><span class="name">${name}</span>`;
         fileList.appendChild(pill);
-      });
-      fileCount.textContent = `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''} selected`;
+      }
+      fileListWrapper.style.display = fileStore.size > 0 ? 'block' : 'none';
+      fileCount.textContent = `${fileStore.size} file${fileStore.size === 1 ? '' : 's'} selected`;
     }
 
-    /* ─── Screen button click ─────────────────────────────────────── */
-    screenBtn.addEventListener('click', async () => {
-      if (selectedFiles.length === 0) return;
-      if (jdMode === 'text' && !jdInput.value.trim()) return;
-      if (jdMode === 'file' && !jdFile) return;
+    /* ─────────────────────────────────────────────────────────────────── */
+    /* Form Validation                                                     */
+    /* ─────────────────────────────────────────────────────────────────── */
+    function checkFormValidity() {
+      const hasJD = jdInput.value.trim().length > 0;
+      const hasResumes = fileStore.size > 0;
+      screenBtn.disabled = !(hasJD && hasResumes);
+    }
 
-      allCandidates = [];
-      renderResults();
-      const total = selectedFiles.length;
+    /* ─────────────────────────────────────────────────────────────────── */
+    /* Extract Text from Files                                             */
+    /* ─────────────────────────────────────────────────────────────────── */
+    async function extractText(file) {
+      const formData = new FormData();
+      formData.append('files', file);
 
       try {
-        // ── Phase 1: resolve JD text ───────────────────────────────
-        let jd;
-        if (jdMode === 'text') {
-          jd = jdInput.value.trim();
-        } else {
-          setLoading(true, 'upload', 0, total);
-          const fd = new FormData();
-          fd.append('files', jdFile);
-          const r = await fetch('/api/extract', { method: 'POST', body: fd });
-          if (!r.ok) throw new Error('Could not read JD file.');
-          const [extracted] = await r.json();
-          if (extracted.error) throw new Error(`JD read failed: ${extracted.error}`);
-          jd = extracted.resume_text;
-        }
-
-        // ── Phase 2: extract text from all resumes in batches ──────
-        setLoading(true, 'upload', 0, total);
-        let resumeItems = [];
-
-        for (let i = 0; i < total; i += UPLOAD_BATCH) {
-          const batch = selectedFiles.slice(i, i + UPLOAD_BATCH);
-          const fd = new FormData();
-          batch.forEach(f => fd.append('files', f));
-          const r = await fetch('/api/extract', { method: 'POST', body: fd });
-          if (!r.ok) throw new Error(`Extract failed at file ${i + 1}.`);
-          resumeItems = resumeItems.concat(await r.json());
-          setLoading(true, 'upload', resumeItems.length, total);
-        }
-
-        // ── Phase 3: score all resumes in parallel waves ───────────
-        setLoading(true, 'process', 0, total);
-        await scoreAll(jd, resumeItems, total);
-
+        const response = await fetch('/api/extract', { method: 'POST', body: formData });
+        const data = await response.json();
+        return data[0]?.resume_text || '';
       } catch (err) {
-        alert(`Screening failed: ${err.message}`);
-      } finally {
-        setLoading(false);
+        console.error('Error extracting text:', err);
+        return '';
       }
-    });
+    }
 
-    /* ─── Score all resumes, 5 at a time with cooldown ────────────── */
-    async function scoreAll(jd, items, total) {
-      const queue = [...items];
-      let scored = 0;
+    /* ─────────────────────────────────────────────────────────────────── */
+    /* Score Resumes                                                       */
+    /* ─────────────────────────────────────────────────────────────────── */
+    screenBtn.addEventListener('click', scoreResumes);
 
-      while (queue.length > 0) {
-        const wave = queue.splice(0, PROCESS_PARALLEL);
+    async function scoreResumes() {
+      const jd = jdInput.value.trim();
+      if (!jd || fileStore.size === 0) return;
 
-        const calls = wave.map(item => {
-          if (item.error) {
-            return Promise.resolve(makeErrorResult(item.filename, item.error));
+      screenBtn.disabled = true;
+      progressBar.classList.add('visible');
+      allResults = [];
+      cardsContainer.innerHTML = '';
+      summaryBar.style.display = 'none';
+      tabsRow.style.display = 'none';
+
+      const files = Array.from(fileStore.values());
+      const batchSize = 10;
+      let processed = 0;
+
+      for (let i = 0; i < files.length; i += batchSize) {
+        const batch = files.slice(i, i + batchSize);
+        const formData = new FormData();
+        batch.forEach((file) => formData.append('files', file));
+
+        try {
+          const response = await fetch('/api/extract', { method: 'POST', body: formData });
+          const extracted = await response.json();
+
+          // Score up to 5 resumes in parallel
+          const scoringWaves = [];
+          for (let j = 0; j < extracted.length; j += 5) {
+            const wave = extracted.slice(j, j + 5).map(async (item) => {
+              const scoreFormData = new FormData();
+              scoreFormData.append('jd', jd);
+              scoreFormData.append('filename', item.filename);
+              scoreFormData.append('resume_text', item.resume_text || '');
+
+              try {
+                const scoreResponse = await fetch('/api/score', { method: 'POST', body: scoreFormData });
+                const result = await scoreResponse.json();
+                allResults.push(result);
+                processed++;
+                updateProgress(processed, files.length);
+              } catch (err) {
+                console.error('Error scoring resume:', err);
+              }
+            });
+            await Promise.all(wave);
+            await new Promise((resolve) => setTimeout(resolve, 500));
           }
-          const fd = new FormData();
-          fd.append('jd', jd);
-          fd.append('filename', item.filename);
-          fd.append('resume_text', item.resume_text);
-          return fetch('/api/score', { method: 'POST', body: fd })
-            .then(r => r.ok ? r.json() : makeErrorResult(item.filename, `Server error ${r.status}`))
-            .catch(e => makeErrorResult(item.filename, e.message));
+        } catch (err) {
+          console.error('Error extracting batch:', err);
+        }
+      }
+
+      progressBar.classList.remove('visible');
+      screenBtn.disabled = false;
+      displayResults();
+    }
+
+    function updateProgress(current, total) {
+      const percent = Math.round((current / total) * 100);
+      progressFill.style.width = `${percent}%`;
+      progressMsg.textContent = `Screening ${current} / ${total}`;
+    }
+
+    /* ─────────────────────────────────────────────────────────────────── */
+    /* Display Results                                                     */
+    /* ─────────────────────────────────────────────────────────────────── */
+    function displayResults() {
+      const shortlisted = allResults.filter((r) => r.shortlisted);
+      const total = allResults.length;
+      const avg = total > 0 ? Math.round(allResults.reduce((sum, r) => sum + (r.overall_score || 0), 0) / total) : 0;
+
+      statTotal.textContent = total;
+      statPassed.textContent = shortlisted.length;
+      statAvg.textContent = avg;
+
+      pillShortlisted.textContent = shortlisted.length;
+      pillAll.textContent = total;
+
+      summaryBar.style.display = 'flex';
+      tabsRow.style.display = 'flex';
+
+      const activeTab = document.querySelector('.tab-btn.active')?.dataset?.tab || 'shortlisted';
+      renderCards(activeTab === 'shortlisted' ? shortlisted : allResults);
+
+      tabBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          tabBtns.forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          renderCards(btn.dataset.tab === 'shortlisted' ? shortlisted : allResults);
         });
-
-        const results = await Promise.all(calls);
-        scored += results.length;
-
-        allCandidates = [...allCandidates, ...results]
-          .sort((a, b) => (b.overall_score || 0) - (a.overall_score || 0));
-        renderResults();
-
-        const shortlisted = allCandidates.filter(c => c.shortlisted).length;
-        setLoading(true, 'process', scored, total, shortlisted);
-
-        if (queue.length > 0) await sleep(PROCESS_COOLDOWN);
-      }
-    }
-
-    function makeErrorResult(filename, error) {
-      return {
-        candidate_name: filename.replace(/\.[^.]+$/, ''),
-        filename,
-        overall_score: 0, skills_score: 0, experience_score: 0,
-        education_score: 0, presentation_score: 0,
-        shortlisted: false, strengths: [], gaps: [], summary: '', error,
-      };
-    }
-
-    function setLoading(on, phase = '', current = 0, total = 0, shortlisted = 0) {
-      screenBtn.disabled = on;
-      progressBar.classList.toggle('visible', on);
-      if (!on) {
-        progressFill.style.width = '0%';
-        checkReady();
-        return;
-      }
-      const pct = total > 0 ? Math.round((current / total) * 100) : 0;
-      if (phase === 'upload') {
-        progressMsg.textContent = `Extracting resumes: ${current} / ${total}`;
-      } else if (phase === 'process') {
-        progressMsg.textContent = `Scoring: ${current} / ${total}` +
-          (shortlisted > 0 ? ` — ${shortlisted} shortlisted` : '');
-      } else {
-        progressMsg.textContent = 'Working…';
-      }
-      progressFill.style.width = `${pct}%`;
-    }
-
-    /* ─── Tabs ────────────────────────────────────────────────────── */
-    tabBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        activeTab = btn.dataset.tab;
-        tabBtns.forEach(b => b.classList.toggle('active', b === btn));
-        renderCards();
       });
-    });
 
-    /* ─── Render ──────────────────────────────────────────────────── */
-    function renderResults() {
-      const total = allCandidates.length;
-      const shortlisted = allCandidates.filter(c => c.shortlisted).length;
-      const scored = allCandidates.filter(c => !c.error);
-      const avg = scored.length
-        ? Math.round(scored.reduce((s, c) => s + c.overall_score, 0) / scored.length)
-        : 0;
-
-      statTotal.textContent = total || '—';
-      statShortlisted.textContent = total ? shortlisted : '—';
-      statAvg.textContent = total ? avg : '—';
-      shortlistedPill.textContent = shortlisted;
-      allPill.textContent = total;
-
-      exportBtn.disabled = total === 0;
-      renderCards();
+      exportBtn.disabled = false;
+      exportBtn.addEventListener('click', () => exportToCSV(allResults));
     }
 
-    function renderCards() {
-      const candidates = activeTab === 'shortlisted'
-        ? allCandidates.filter(c => c.shortlisted)
-        : allCandidates;
-
-      if (allCandidates.length === 0) {
-        emptyState.style.display = 'flex';
-        cardsList.style.display = 'none';
+    function renderCards(results) {
+      cardsContainer.innerHTML = '';
+      if (results.length === 0) {
+        cardsContainer.innerHTML =
+          '<div class="empty-state"><p>No results to display</p></div>';
         return;
       }
 
-      emptyState.style.display = 'none';
-      cardsList.style.display = 'block';
-      cardsList.innerHTML = '';
+      results.forEach((result) => {
+        const card = document.createElement('div');
+        card.className = 'candidate-card';
+        const scoreClass = result.overall_score >= 70 ? 'score-green' : result.overall_score >= 50 ? 'score-yellow' : 'score-red';
 
-      if (candidates.length === 0 && activeTab === 'shortlisted') {
-        cardsList.innerHTML = `
-        <div class="empty-state" style="padding:40px 0;">
-          <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          <p>No shortlisted candidates</p>
-          <small>No candidate scored ≥ 70. Check the "All Candidates" tab.</small>
-        </div>`;
-        return;
-      }
+        let errHTML = '';
+        if (result.error) {
+          errHTML = `<div class="error-chip">⚠ ${result.error}</div>`;
+        }
 
-      candidates.forEach(c => cardsList.appendChild(buildCard(c)));
+        const strengthsList = (result.strengths || []).map((s) => `<div class="list-item"><div class="dot green"></div>${s}</div>`).join('');
+        const gapsList = (result.gaps || []).map((g) => `<div class="list-item"><div class="dot red"></div>${g}</div>`).join('');
+
+        card.innerHTML = `
+          ${errHTML}
+          <div class="card-header">
+            <div class="card-identity">
+              <div class="candidate-name">${result.candidate_name || 'Unknown'}</div>
+              <div class="candidate-file">${result.filename}</div>
+            </div>
+            <div class="card-badges">
+              <div class="score-badge ${scoreClass}">
+                ${result.overall_score}<small>/ 100</small>
+              </div>
+              ${result.shortlisted ? '<div class="shortlisted-chip">✓ Shortlisted</div>' : ''}
+            </div>
+          </div>
+          <div class="score-bars">
+            <div class="score-bar-row">
+              <div class="bar-label">Skills</div>
+              <div class="bar-track"><div class="bar-fill skills" style="width: ${(result.skills_score / 40) * 100}%"></div></div>
+              <div class="bar-score">${result.skills_score}/40</div>
+            </div>
+            <div class="score-bar-row">
+              <div class="bar-label">Experience</div>
+              <div class="bar-track"><div class="bar-fill experience" style="width: ${(result.experience_score / 30) * 100}%"></div></div>
+              <div class="bar-score">${result.experience_score}/30</div>
+            </div>
+            <div class="score-bar-row">
+              <div class="bar-label">Education</div>
+              <div class="bar-track"><div class="bar-fill education" style="width: ${(result.education_score / 20) * 100}%"></div></div>
+              <div class="bar-score">${result.education_score}/20</div>
+            </div>
+            <div class="score-bar-row">
+              <div class="bar-label">Presentation</div>
+              <div class="bar-track"><div class="bar-fill presentation" style="width: ${(result.presentation_score / 10) * 100}%"></div></div>
+              <div class="bar-score">${result.presentation_score}/10</div>
+            </div>
+          </div>
+          <div class="card-lists">
+            <div class="list-box">
+              <div class="list-box-title green">Strengths</div>
+              ${strengthsList || '<div class="list-item">—</div>'}
+            </div>
+            <div class="list-box">
+              <div class="list-box-title red">Gaps</div>
+              ${gapsList || '<div class="list-item">—</div>'}
+            </div>
+          </div>
+          <div class="card-summary">${result.summary || ''}</div>
+        `;
+        cardsContainer.appendChild(card);
+      });
     }
 
-    function buildCard(c) {
-      const scoreClass = c.overall_score >= 70 ? 'score-green'
-        : c.overall_score >= 50 ? 'score-yellow'
-          : 'score-red';
-
-      const card = document.createElement('div');
-      card.className = 'candidate-card';
-
-      const errBlock = c.error
-        ? `<div class="error-chip">⚠ ${escHtml(c.error)}</div>`
-        : '';
-
-      const strengthsHtml = (c.strengths || []).map(s =>
-        `<div class="list-item"><span class="dot green"></span><span>${escHtml(s)}</span></div>`
-      ).join('');
-
-      const gapsHtml = (c.gaps || []).map(g =>
-        `<div class="list-item"><span class="dot red"></span><span>${escHtml(g)}</span></div>`
-      ).join('');
-
-      const shortlistedBadge = c.shortlisted
-        ? `<div class="shortlisted-chip">
-           <svg width="10" height="10" fill="currentColor" viewBox="0 0 20 20">
-             <path fill-rule="evenodd" clip-rule="evenodd"
-               d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
-           </svg>
-           Shortlisted
-         </div>`
-        : '';
-
-      const maxMap = { skills: 40, experience: 30, education: 20, presentation: 10 };
-
-      const barsHtml = Object.entries(maxMap).map(([key, max]) => {
-        const val = c[`${key}_score`] ?? 0;
-        const pct = Math.min(100, Math.round((val / max) * 100));
-        const lbl = key.charAt(0).toUpperCase() + key.slice(1);
-        return `
-        <div class="score-bar-row">
-          <span class="bar-label">${lbl}</span>
-          <div class="bar-track">
-            <div class="bar-fill ${key}" style="width:${pct}%"></div>
-          </div>
-          <span class="bar-score">${val}/${max}</span>
-        </div>`;
-      }).join('');
-
-      card.innerHTML = `
-      <div class="card-header">
-        <div class="card-identity">
-          <div class="candidate-name">${escHtml(c.candidate_name || 'Unknown')}</div>
-          <div class="candidate-file">${escHtml(c.filename || '')}</div>
-        </div>
-        <div class="card-badges">
-          ${shortlistedBadge}
-          <div class="score-badge ${scoreClass}">
-            ${c.overall_score}
-            <small>/ 100</small>
-          </div>
-        </div>
-      </div>
-      ${errBlock}
-      <div class="score-bars">${barsHtml}</div>
-      ${(strengthsHtml || gapsHtml) ? `
-        <div class="card-lists">
-          <div class="list-box">
-            <div class="list-box-title green">✓ Strengths</div>
-            ${strengthsHtml || '<div class="list-item" style="color:var(--text-muted)">None listed</div>'}
-          </div>
-          <div class="list-box">
-            <div class="list-box-title red">✗ Gaps</div>
-            ${gapsHtml || '<div class="list-item" style="color:var(--text-muted)">None listed</div>'}
-          </div>
-        </div>` : ''}
-      ${c.summary ? `<div class="card-summary">${escHtml(c.summary)}</div>` : ''}
-    `;
-      return card;
-    }
-
-    function escHtml(str) {
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    }
-
-    /* ─── CSV Export ──────────────────────────────────────────────── */
-    exportBtn.addEventListener('click', () => {
-      if (!allCandidates.length) return;
-
+    /* ─────────────────────────────────────────────────────────────────── */
+    /* Export CSV - UPDATED with Name, Phone, Email columns at front      */
+    /* ─────────────────────────────────────────────────────────────────── */
+    function exportToCSV(results) {
       const headers = [
-        'Filename', 'Candidate Name', 'Overall Score',
-        'Skills Score', 'Experience Score', 'Education Score', 'Presentation Score',
-        'Shortlisted', 'Strengths', 'Gaps', 'Summary', 'Error'
+        'Name',
+        'Phone Number (strictly in +91 XXXXXXXXXX format)',
+        'Email ID (optional)',
+        'Filename',
+        'Overall Score',
+        'Skills Score',
+        'Experience Score',
+        'Education Score',
+        'Presentation Score',
+        'Shortlisted',
+        'Strengths',
+        'Gaps',
+        'Summary'
       ];
 
-      const rows = allCandidates.map(c => [
-        c.filename || '',
-        c.candidate_name || 'Unknown',
-        c.overall_score ?? 0,
-        c.skills_score ?? 0,
-        c.experience_score ?? 0,
-        c.education_score ?? 0,
-        c.presentation_score ?? 0,
-        c.shortlisted ? 'Yes' : 'No',
-        (c.strengths || []).join(' | '),
-        (c.gaps || []).join(' | '),
-        c.summary || '',
-        c.error || ''
+      const rows = results.map((r) => [
+        r.candidate_name || 'Unknown',
+        '',  // Phone Number - empty for user to fill
+        '',  // Email ID - empty for user to fill
+        r.filename || '',
+        r.overall_score || 0,
+        r.skills_score || 0,
+        r.experience_score || 0,
+        r.education_score || 0,
+        r.presentation_score || 0,
+        r.shortlisted ? 'Yes' : 'No',
+        (r.strengths || []).join('; '),
+        (r.gaps || []).join('; '),
+        r.summary || ''
       ]);
 
-      const csvContent = [headers, ...rows]
-        .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
-        .join('\n');
+      const csvContent = [
+        headers.map((h) => `"${h}"`).join(','),
+        ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ].join('\n');
 
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `ats_results_${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    });
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.setAttribute('href', URL.createObjectURL(blob));
+      link.setAttribute('download', `ats-results-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    checkFormValidity();
   </script>
+
 </body>
 
 </html>
