@@ -1218,15 +1218,36 @@
     /* ─────────────────────────────────────────────────────────────────── */
     /* JD File Drop Zone                                                   */
     /* ─────────────────────────────────────────────────────────────────── */
-    setupDragDrop(jdDropZone, jdFileInput, () => {
-      if (jdFileInput.files.length > 0) {
-        const file = jdFileInput.files[0];
-        jdFileSelected.innerHTML = `
-          <span class="ext">${file.name.split('.').pop().toUpperCase()}</span>
-          <span>${file.name}</span>
-        `;
-        jdFileSelected.style.display = 'flex';
+    async function handleJDFile(file) {
+      jdFileSelected.innerHTML = `
+        <span class="ext">${file.name.split('.').pop().toUpperCase()}</span>
+        <span>${file.name} — extracting...</span>
+      `;
+      jdFileSelected.style.display = 'flex';
+
+      const form = new FormData();
+      form.append('files', file);
+      try {
+        const resp = await fetch('/api/extract', { method: 'POST', body: form });
+        const [result] = await resp.json();
+        if (result.resume_text) {
+          jdInput.value = result.resume_text;
+          jdFileSelected.querySelector('span:last-child').textContent = file.name;
+        } else {
+          jdFileSelected.querySelector('span:last-child').textContent = `${file.name} — failed to extract`;
+        }
+      } catch {
+        jdFileSelected.querySelector('span:last-child').textContent = `${file.name} — extraction error`;
       }
+      updateScreenBtn();
+    }
+
+    jdFileInput.addEventListener('change', () => {
+      if (jdFileInput.files.length > 0) handleJDFile(jdFileInput.files[0]);
+    });
+
+    setupDragDrop(jdDropZone, jdFileInput, () => {
+      if (jdFileInput.files.length > 0) handleJDFile(jdFileInput.files[0]);
     });
 
     /* ─────────────────────────────────────────────────────────────────── */
