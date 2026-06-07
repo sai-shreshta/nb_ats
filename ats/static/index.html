@@ -1448,8 +1448,9 @@
       if (!lastResults.length) return;
 
       const escape = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-      const headers = ['Name', 'Phone Number', 'Email ID', 'Filename', 'Overall Score', 'Skills', 'Experience', 'Education', 'Presentation', 'Shortlisted', 'Strengths', 'Gaps', 'Summary'];
+      const headers = ['applied_role', 'candidate_name', 'candidate_phone_number', 'candidate_email', 'resume_filename', 'overall_score', 'skills_score', 'experience_score', 'education_score', 'presentation_score', 'shortlisted', 'strengths', 'gaps', 'summary'];
       const rows = lastResults.map(r => [
+        escape(r.job_role || ''),
         escape(r.candidate_name),
         escape(r.phone_number || ''),
         escape(r.email || ''),

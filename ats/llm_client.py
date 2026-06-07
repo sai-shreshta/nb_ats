@@ -39,6 +39,7 @@ Then evaluate the resume with these principles:
 
 Return ONLY a valid JSON object with this exact structure, no other text:
 {{
+  "job_role": "exact job title/role name from the JD (e.g. 'Senior Software Engineer', 'Sales Manager')",
   "candidate_name": "extracted full name or Unknown",
   "phone_number": "phone number in +91 XXXXXXXXXX format, or empty string if not found",
   "email": "email address or empty string if not found",
@@ -78,7 +79,10 @@ def _extract_json(text: str) -> dict:
 def _error_result(filename: str, error: str) -> dict:
     name = filename.rsplit(".", 1)[0] if "." in filename else filename
     return {
+        "job_role": "",
         "candidate_name": name,
+        "phone_number": "",
+        "email": "",
         "filename": filename,
         "overall_score": 0,
         "skills_score": 0,
