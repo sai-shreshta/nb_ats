@@ -20,7 +20,7 @@
     }
 
     :root {
-      --bg: #f7f8fa;
+      --bg: #FBF6F6;
       --surface: #ffffff;
       --border: #e2e6ea;
       --shadow: 0 1px 4px rgba(0, 0, 0, .06), 0 4px 16px rgba(0, 0, 0, .06);
@@ -309,8 +309,9 @@
     }
 
     .drop-zone-icon {
-      font-size: 28px;
       margin-bottom: 8px;
+      display: flex;
+      justify-content: center;
     }
 
     .drop-zone p {
@@ -1206,13 +1207,9 @@
 
   <!-- ── Header ─────────────────────────────────────────────────── -->
   <header class="app-header">
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" flex-shrink="0">
-      <circle cx="13" cy="13" r="13" fill="#E8333A"/>
-      <circle cx="8.5" cy="9.5" r="2.8" stroke="white" stroke-width="1.6"/>
-      <circle cx="17.5" cy="16.5" r="2.8" stroke="white" stroke-width="1.6"/>
-      <line x1="6" y1="20" x2="20" y2="6" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
-    </svg>
-    <h1 style="font-size:15px;font-weight:800;letter-spacing:-.4px;color:#2D2D2D;">NO<span style="color:#E8333A;">BROKER</span> <span style="font-weight:400;color:var(--text-muted);font-size:13px;">Resume Screener</span></h1>
+    <img src="/nobroker-logo.png" alt="NoBroker" style="height:28px;width:auto;flex-shrink:0;object-fit:contain;" />
+    <div style="width:1px;height:20px;background:var(--border);margin:0 4px;"></div>
+    <span style="font-size:13px;font-weight:500;color:var(--text-secondary);">Resume Screener</span>
   </header>
 
   <nav class="app-nav">
@@ -1282,8 +1279,8 @@
         </div>
         <!-- Mode toggle -->
         <div class="jd-mode-tabs">
-          <button class="jd-mode-tab active" id="jd-tab-text" type="button">✏ Paste Text</button>
-          <button class="jd-mode-tab" id="jd-tab-file" type="button">📄 Upload PDF / DOCX</button>
+          <button class="jd-mode-tab active" id="jd-tab-text" type="button">Paste Text</button>
+          <button class="jd-mode-tab" id="jd-tab-file" type="button">Upload File</button>
         </div>
         <!-- Text mode -->
         <div id="jd-text-panel">
@@ -1333,8 +1330,12 @@
         <!-- Drop zone -->
         <div class="drop-zone" id="drop-zone">
           <input type="file" id="drop-file-input" multiple accept=".pdf,.docx" style="display:none;" />
-          <div class="drop-zone-icon">📂</div>
-          <p>…or drag &amp; drop resumes here</p>
+          <div class="drop-zone-icon">
+            <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="color:var(--text-muted);">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+            </svg>
+          </div>
+          <p>Drag and drop resumes here</p>
           <small>Accepts .pdf and .docx - individual files or entire folders</small>
         </div>
       </div>
