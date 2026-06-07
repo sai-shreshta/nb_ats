@@ -1079,6 +1079,41 @@
       font-size: 12px;
     }
 
+    /* ── History stats bar ──────────────────────────────────────── */
+    .history-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      padding: 16px 24px 0;
+      flex-shrink: 0;
+    }
+
+    .history-stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+    }
+
+    .history-stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+
+    .history-stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .history-stat-value.green { color: var(--green); }
+    .history-stat-value.blue  { color: var(--primary); }
+
     /* ── Toast ──────────────────────────────────────────────────── */
     .toast {
       position: fixed;
@@ -1194,6 +1229,15 @@
 
     <!-- List view -->
     <div id="history-list-view" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="history-stats" id="history-stats" style="display:none;">
+        <div class="history-stat-card"><div class="history-stat-label">Total Runs</div><div class="history-stat-value blue" id="hs-runs">—</div></div>
+        <div class="history-stat-card"><div class="history-stat-label">Total Applications</div><div class="history-stat-value" id="hs-applications">—</div></div>
+        <div class="history-stat-card"><div class="history-stat-label">Unique Applicants</div><div class="history-stat-value" id="hs-unique">—</div></div>
+        <div class="history-stat-card"><div class="history-stat-label">Total Shortlisted</div><div class="history-stat-value green" id="hs-shortlisted">—</div></div>
+        <div class="history-stat-card"><div class="history-stat-label">Shortlist Rate</div><div class="history-stat-value green" id="hs-rate">—</div></div>
+        <div class="history-stat-card"><div class="history-stat-label">Avg Score</div><div class="history-stat-value" id="hs-avg">—</div></div>
+        <div class="history-stat-card"><div class="history-stat-label">Total Screened</div><div class="history-stat-value" id="hs-screened">—</div></div>
+      </div>
       <div class="history-header">
         <h2>Past Screenings</h2>
         <p>Click any run to view its candidates</p>
@@ -1889,17 +1933,19 @@
 
     async function loadHistory() {
       screeningList.innerHTML = '<div style="padding:20px;color:var(--text-muted);font-size:13px;">Loading...</div>';
-      const { data, error } = await _sb
-        .from('screenings')
-        .select('*')
-        .order('created_at', { ascending: false });
+      document.getElementById('history-stats').style.display = 'none';
 
-      if (error) {
+      const [{ data: screenings, error: sErr }, { data: allCandidates, error: cErr }] = await Promise.all([
+        _sb.from('screenings').select('*').order('created_at', { ascending: false }),
+        _sb.from('candidates').select('phone_number, email, overall_score, shortlisted'),
+      ]);
+
+      if (sErr || cErr) {
         screeningList.innerHTML = '<div style="padding:20px;color:var(--red);font-size:13px;">Failed to load history.</div>';
         return;
       }
 
-      if (!data.length) {
+      if (!screenings.length) {
         screeningList.innerHTML = `
           <div class="history-empty">
             <p>No screenings yet</p>
@@ -1908,8 +1954,45 @@
         return;
       }
 
+      // ── Compute metrics ──────────────────────────────────────────────
+      const totalRuns = screenings.length;
+      const totalApplications = allCandidates.length;
+      const totalShortlisted = allCandidates.filter(c => c.shortlisted).length;
+      const shortlistRate = totalApplications > 0 ? ((totalShortlisted / totalApplications) * 100).toFixed(1) : '0.0';
+      const avgScore = totalApplications > 0
+        ? Math.round(allCandidates.reduce((s, c) => s + (c.overall_score || 0), 0) / totalApplications)
+        : 0;
+      const totalScreened = screenings.reduce((s, r) => s + r.total_screened, 0);
+
+      // Unique applicants: deduplicate by phone → then by email → rest unique
+      const seenPhones = new Set();
+      const seenEmails = new Set();
+      let uniqueCount = 0;
+      for (const c of allCandidates) {
+        const phone = (c.phone_number || '').trim();
+        const email = (c.email || '').trim().toLowerCase();
+        if (phone) {
+          if (!seenPhones.has(phone)) { seenPhones.add(phone); uniqueCount++; }
+        } else if (email) {
+          if (!seenEmails.has(email)) { seenEmails.add(email); uniqueCount++; }
+        } else {
+          uniqueCount++;
+        }
+      }
+
+      // ── Render stats ─────────────────────────────────────────────────
+      document.getElementById('hs-runs').textContent = totalRuns;
+      document.getElementById('hs-applications').textContent = totalApplications;
+      document.getElementById('hs-unique').textContent = uniqueCount;
+      document.getElementById('hs-shortlisted').textContent = totalShortlisted;
+      document.getElementById('hs-rate').textContent = `${shortlistRate}%`;
+      document.getElementById('hs-avg').textContent = `${avgScore}%`;
+      document.getElementById('hs-screened').textContent = totalScreened;
+      document.getElementById('history-stats').style.display = 'grid';
+
+      // ── Render screening list ────────────────────────────────────────
       screeningList.innerHTML = '';
-      data.forEach(s => {
+      screenings.forEach(s => {
         const date = new Date(s.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
         const time = new Date(s.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
         const row = document.createElement('div');
