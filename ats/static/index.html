@@ -20,26 +20,26 @@
     }
 
     :root {
-      --bg: #FBF6F6;
+      --bg: #FAF3F3;
       --surface: #ffffff;
-      --border: #e2e6ea;
-      --shadow: 0 1px 4px rgba(0, 0, 0, .06), 0 4px 16px rgba(0, 0, 0, .06);
-      --shadow-hover: 0 4px 12px rgba(0, 0, 0, .10), 0 8px 24px rgba(0, 0, 0, .08);
+      --border: #EAE0E0;
+      --shadow: 0 1px 3px rgba(0, 0, 0, .05), 0 4px 12px rgba(0, 0, 0, .05);
+      --shadow-hover: 0 4px 16px rgba(232, 51, 58, .10), 0 8px 24px rgba(0, 0, 0, .07);
       --primary: #E8333A;
       --primary-dark: #C82030;
-      --primary-light: #FEF5F5;
+      --primary-light: #FEF2F2;
       --green: #16a34a;
       --green-bg: #f0fdf4;
       --yellow: #d97706;
       --yellow-bg: #fffbeb;
       --red: #dc2626;
       --red-bg: #fef2f2;
-      --text: #111827;
+      --text: #1A1A1A;
       --text-secondary: #6b7280;
-      --text-muted: #9ca3af;
-      --radius: 10px;
-      --radius-sm: 6px;
-      --transition: 0.18s ease;
+      --text-muted: #A0A0A0;
+      --radius: 8px;
+      --radius-sm: 5px;
+      --transition: 0.15s ease;
     }
 
     html,
@@ -55,15 +55,16 @@
     /* ── Layout ─────────────────────────────────────────────────── */
     .app-header {
       background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0 24px;
-      height: 56px;
+      border-bottom: 3px solid var(--primary);
+      padding: 0 28px;
+      height: 58px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 14px;
       position: sticky;
       top: 0;
       z-index: 100;
+      box-shadow: 0 2px 8px rgba(232, 51, 58, .08);
     }
 
     .app-header svg {
@@ -86,9 +87,9 @@
 
     .app-body {
       display: grid;
-      grid-template-columns: 380px 1fr;
+      grid-template-columns: 360px 1fr;
       gap: 0;
-      height: calc(100vh - 56px);
+      height: calc(100vh - 58px);
       overflow: hidden;
     }
 
@@ -104,11 +105,13 @@
     }
 
     .panel-title {
-      font-size: 11px;
-      font-weight: 600;
+      font-size: 10px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: .8px;
-      color: var(--text-muted);
+      letter-spacing: 1.2px;
+      color: var(--primary);
+      padding-left: 8px;
+      border-left: 2px solid var(--primary);
     }
 
     /* JD mode toggle */
@@ -139,6 +142,7 @@
     .jd-mode-tab.active {
       background: var(--surface);
       color: var(--primary);
+      font-weight: 700;
       box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
     }
 
@@ -231,8 +235,12 @@
       gap: 6px;
       font-size: 12px;
       font-weight: 600;
-      color: var(--text-secondary);
+      color: var(--text);
       margin-bottom: 6px;
+    }
+
+    .field-label svg {
+      color: var(--primary);
     }
 
     .field-label .req {
@@ -388,26 +396,28 @@
     /* Screen button */
     #screen-btn {
       width: 100%;
-      padding: 12px;
-      background: var(--primary);
+      padding: 13px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       color: #fff;
       border: none;
       border-radius: var(--radius);
       font-family: inherit;
-      font-size: 14px;
-      font-weight: 600;
+      font-size: 13px;
+      font-weight: 700;
       cursor: pointer;
-      transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+      transition: opacity var(--transition), transform var(--transition), box-shadow var(--transition);
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      letter-spacing: -.1px;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+      box-shadow: 0 2px 8px rgba(232, 51, 58, .25);
     }
 
     #screen-btn:not(:disabled):hover {
-      background: var(--primary-dark);
-      box-shadow: 0 4px 14px rgba(232, 51, 58, .35);
+      opacity: .92;
+      box-shadow: 0 4px 16px rgba(232, 51, 58, .40);
     }
 
     #screen-btn:not(:disabled):active {
@@ -743,13 +753,15 @@
     }
 
     .shortlisted-chip {
-      background: var(--green-bg);
-      color: var(--green);
-      border: 1px solid #bbf7d0;
-      border-radius: 20px;
-      padding: 3px 10px;
-      font-size: 11px;
+      background: var(--green);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 3px 9px;
+      font-size: 10px;
       font-weight: 700;
+      letter-spacing: .3px;
+      text-transform: uppercase;
       display: flex;
       align-items: center;
       gap: 4px;
@@ -889,28 +901,30 @@
     /* ── Nav tabs ───────────────────────────────────────────────── */
     .app-nav {
       display: flex;
-      gap: 4px;
-      padding: 0 24px;
+      gap: 0;
+      padding: 0 28px;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
     }
 
     .nav-tab {
-      padding: 10px 18px;
+      padding: 11px 20px;
       font-size: 13px;
       font-weight: 500;
       color: var(--text-secondary);
       background: none;
       border: none;
-      border-bottom: 2px solid transparent;
+      border-bottom: 2.5px solid transparent;
       cursor: pointer;
       transition: color var(--transition), border-color var(--transition);
       margin-bottom: -1px;
+      letter-spacing: .1px;
     }
 
     .nav-tab.active {
       color: var(--primary);
       border-bottom-color: var(--primary);
+      font-weight: 600;
     }
 
     .nav-tab:hover:not(.active) {
@@ -935,15 +949,17 @@
     }
 
     .history-header h2 {
-      font-size: 16px;
-      font-weight: 600;
+      font-size: 14px;
+      font-weight: 700;
       color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
     }
 
     .history-header p {
-      font-size: 13px;
-      color: var(--text-secondary);
-      margin-top: 2px;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 3px;
     }
 
     .screening-list {
@@ -958,8 +974,9 @@
     .screening-row {
       background: var(--surface);
       border: 1px solid var(--border);
+      border-left: 3px solid transparent;
       border-radius: var(--radius);
-      padding: 14px 18px;
+      padding: 14px 16px 14px 15px;
       display: flex;
       align-items: center;
       gap: 16px;
@@ -969,7 +986,19 @@
 
     .screening-row:hover {
       box-shadow: var(--shadow-hover);
-      border-color: #cbd5e1;
+      border-color: var(--border);
+      border-left-color: var(--primary);
+    }
+
+    .screening-row-chevron {
+      color: var(--text-muted);
+      flex-shrink: 0;
+      transition: transform var(--transition), color var(--transition);
+    }
+
+    .screening-row:hover .screening-row-chevron {
+      color: var(--primary);
+      transform: translateX(2px);
     }
 
     .screening-role {
@@ -1082,31 +1111,38 @@
 
     /* ── History stats bar ──────────────────────────────────────── */
     .history-stats {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      display: flex;
       gap: 10px;
-      padding: 16px 24px 0;
+      padding: 20px 24px 0;
       flex-shrink: 0;
+      flex-wrap: wrap;
     }
 
     .history-stat-card {
+      flex: 1;
+      min-width: 110px;
       background: var(--surface);
       border: 1px solid var(--border);
+      border-top: 3px solid var(--border);
       border-radius: var(--radius);
-      padding: 12px 16px;
+      padding: 14px 16px;
     }
 
+    .history-stat-card:has(#hs-runs) { border-top-color: var(--primary); }
+    .history-stat-card:has(#hs-shortlisted),
+    .history-stat-card:has(#hs-rate) { border-top-color: var(--green); }
+
     .history-stat-label {
-      font-size: 11px;
-      font-weight: 500;
+      font-size: 10px;
+      font-weight: 600;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin-bottom: 4px;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
     }
 
     .history-stat-value {
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 700;
       color: var(--text);
       line-height: 1;
@@ -1207,7 +1243,7 @@
 
   <!-- ── Header ─────────────────────────────────────────────────── -->
   <header class="app-header">
-    <img src="/nobroker-logo.png" alt="NoBroker" style="height:28px;width:auto;flex-shrink:0;object-fit:contain;" />
+    <img src="/nb_logo_trans.png" alt="NoBroker" style="height:28px;width:auto;flex-shrink:0;object-fit:contain;" />
     <div style="width:1px;height:20px;background:var(--border);margin:0 4px;"></div>
     <span style="font-size:13px;font-weight:500;color:var(--text-secondary);">Resume Screener</span>
   </header>
@@ -1983,7 +2019,7 @@
       document.getElementById('hs-rate').textContent = `${shortlistRate}%`;
       document.getElementById('hs-avg').textContent = `${avgScore}%`;
       document.getElementById('hs-screened').textContent = totalScreened;
-      document.getElementById('history-stats').style.display = 'grid';
+      document.getElementById('history-stats').style.display = 'flex';
 
       // ── Render screening list ────────────────────────────────────────
       screeningList.innerHTML = '';
@@ -1993,7 +2029,7 @@
         const row = document.createElement('div');
         row.className = 'screening-row';
         row.innerHTML = `
-          <div style="flex:1;">
+          <div style="flex:1;min-width:0;">
             <div class="screening-role">${s.job_role}</div>
             <div class="screening-meta">${date} at ${time}</div>
           </div>
@@ -2001,6 +2037,9 @@
             <span class="badge badge-total">${s.total_screened} screened</span>
             <span class="badge badge-shortlisted">${s.total_shortlisted} shortlisted</span>
           </div>
+          <svg class="screening-row-chevron" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+          </svg>
         `;
         row.addEventListener('click', () => openScreeningDetail(s));
         screeningList.appendChild(row);
