@@ -1358,7 +1358,7 @@
         </button>
       </div>
 
-      <div class="cards-container">
+      <div class="cards-container" id="screen-cards">
         <div class="empty-state">
           <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round"
@@ -1469,7 +1469,7 @@
 
     const summaryBar = document.getElementById('summary-bar');
     const tabsRow = document.querySelector('.tabs-row');
-    const cardsContainer = document.querySelector('.cards-container');
+    const cardsContainer = document.getElementById('screen-cards');
 
     const statTotal = document.getElementById('stat-total');
     const statPassed = document.getElementById('stat-passed');
