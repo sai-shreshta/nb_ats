@@ -6,3 +6,4 @@ python-docx
 google-generativeai
 anthropic
 python-dotenv
+supabase

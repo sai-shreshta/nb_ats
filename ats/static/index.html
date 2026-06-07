@@ -1422,15 +1422,7 @@
     <button class="toast-close" id="toast-close">✕</button>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
-    /* ─────────────────────────────────────────────────────────────────── */
-    /* Supabase                                                            */
-    /* ─────────────────────────────────────────────────────────────────── */
-    const _sb = supabase.createClient(
-      'https://kfgvhptnmmujdqhtmmyg.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmZ3ZocHRubW11amRxaHRtbXlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MTA0MTYsImV4cCI6MjA5NjM4NjQxNn0.C0OqqCIpbWeopYFOTvvfP9Oyjt6axlsuuuXn2rIUYVs'
-    );
 
     const toast = document.getElementById('toast');
     const toastMsg = document.getElementById('toast-msg');
@@ -1456,13 +1448,7 @@
       try {
         const jobRole = results.find(r => r.job_role)?.job_role || 'Unknown Role';
         const shortlisted = results.filter(r => r.shortlisted).length;
-        const { data: screening, error: sErr } = await _sb
-          .from('screenings')
-          .insert({ job_role: jobRole, jd_text: jd, total_screened: results.length, total_shortlisted: shortlisted })
-          .select('id').single();
-        if (sErr) throw sErr;
-        const rows = results.map(r => ({
-          screening_id: screening.id,
+        const candidates = results.map(r => ({
           candidate_name: r.candidate_name || '',
           phone_number: r.phone_number || '',
           email: r.email || '',
@@ -1477,8 +1463,12 @@
           gaps: r.gaps || [],
           summary: r.summary || '',
         }));
-        const { error: cErr } = await _sb.from('candidates').insert(rows);
-        if (cErr) throw cErr;
+        const res = await fetch('/api/save-screening', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ job_role: jobRole, jd_text: jd, total_screened: results.length, total_shortlisted: shortlisted, candidates }),
+        });
+        if (!res.ok) throw new Error(await res.text());
         showToast('success', '✓ Saved to history');
       } catch(e) {
         console.error('saveScreening error:', e);
@@ -1935,12 +1925,14 @@
       screeningList.innerHTML = '<div style="padding:20px;color:var(--text-muted);font-size:13px;">Loading...</div>';
       document.getElementById('history-stats').style.display = 'none';
 
-      const [{ data: screenings, error: sErr }, { data: allCandidates, error: cErr }] = await Promise.all([
-        _sb.from('screenings').select('*').order('created_at', { ascending: false }),
-        _sb.from('candidates').select('phone_number, email, overall_score, shortlisted'),
-      ]);
-
-      if (sErr || cErr) {
+      let screenings, allCandidates;
+      try {
+        const res = await fetch('/api/history');
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        screenings = data.screenings;
+        allCandidates = data.candidates;
+      } catch(e) {
         screeningList.innerHTML = '<div style="padding:20px;color:var(--red);font-size:13px;">Failed to load history.</div>';
         return;
       }
@@ -2023,13 +2015,12 @@
 
       historyCards.innerHTML = '<div style="padding:20px;color:var(--text-muted);font-size:13px;">Loading candidates...</div>';
 
-      const { data, error } = await _sb
-        .from('candidates')
-        .select('*')
-        .eq('screening_id', screening.id)
-        .order('overall_score', { ascending: false });
-
-      if (error) {
+      let data;
+      try {
+        const res = await fetch(`/api/history/${screening.id}/candidates`);
+        if (!res.ok) throw new Error(await res.text());
+        data = await res.json();
+      } catch(e) {
         historyCards.innerHTML = '<div style="padding:20px;color:var(--red);font-size:13px;">Failed to load candidates.</div>';
         return;
       }
