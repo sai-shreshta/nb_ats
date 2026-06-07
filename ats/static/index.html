@@ -885,6 +885,200 @@
       border-top: 1px solid var(--border);
     }
 
+    /* ── Nav tabs ───────────────────────────────────────────────── */
+    .app-nav {
+      display: flex;
+      gap: 4px;
+      padding: 0 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-tab {
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: color var(--transition), border-color var(--transition);
+      margin-bottom: -1px;
+    }
+
+    .nav-tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .nav-tab:hover:not(.active) {
+      color: var(--text);
+    }
+
+    /* ── History view ───────────────────────────────────────────── */
+    .history-view {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .history-view.visible {
+      display: flex;
+    }
+
+    .history-header {
+      padding: 20px 24px 0;
+      flex-shrink: 0;
+    }
+
+    .history-header h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .history-header p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .screening-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 24px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .screening-row {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      cursor: pointer;
+      transition: box-shadow var(--transition), border-color var(--transition);
+    }
+
+    .screening-row:hover {
+      box-shadow: var(--shadow-hover);
+      border-color: #cbd5e1;
+    }
+
+    .screening-role {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+    }
+
+    .screening-meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .screening-badges {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .badge {
+      font-size: 11.5px;
+      font-weight: 500;
+      padding: 3px 9px;
+      border-radius: 20px;
+    }
+
+    .badge-total {
+      background: #f1f5f9;
+      color: var(--text-secondary);
+    }
+
+    .badge-shortlisted {
+      background: var(--green-bg);
+      color: var(--green);
+    }
+
+    .history-back {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 24px 0;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--primary);
+      cursor: pointer;
+      background: none;
+      border: none;
+      flex-shrink: 0;
+    }
+
+    .history-back.visible {
+      display: flex;
+    }
+
+    .history-back:hover {
+      text-decoration: underline;
+    }
+
+    .history-detail {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .history-detail.visible {
+      display: flex;
+    }
+
+    .history-detail-header {
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .history-detail-title {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .history-detail-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .history-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 10px;
+      color: var(--text-muted);
+      padding: 40px;
+      text-align: center;
+    }
+
+    .history-empty p {
+      font-size: 14px;
+    }
+
+    .history-empty small {
+      font-size: 12px;
+    }
+
     /* ── Responsive ─────────────────────────────────────────────── */
     @media (max-width: 800px) {
       .app-body {
@@ -917,7 +1111,48 @@
     <h1>ATS Resume Screener <span>— powered by AI</span></h1>
   </header>
 
-  <div class="app-body">
+  <nav class="app-nav">
+    <button class="nav-tab active" id="nav-screen">Screen</button>
+    <button class="nav-tab" id="nav-history">History</button>
+  </nav>
+
+  <!-- ── History View ───────────────────────────────────────────── -->
+  <div class="history-view" id="history-view">
+    <button class="history-back" id="history-back">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+      </svg>
+      Back to all screenings
+    </button>
+
+    <!-- List view -->
+    <div id="history-list-view" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="history-header">
+        <h2>Past Screenings</h2>
+        <p>Click any run to view its candidates</p>
+      </div>
+      <div class="screening-list" id="screening-list"></div>
+    </div>
+
+    <!-- Detail view -->
+    <div class="history-detail" id="history-detail-view">
+      <div class="history-detail-header">
+        <div>
+          <div class="history-detail-title" id="detail-title"></div>
+          <div class="history-detail-sub" id="detail-sub"></div>
+        </div>
+        <button id="history-export-btn" style="display:flex;align-items:center;gap:6px;padding:7px 14px;font-size:13px;font-weight:500;background:var(--primary);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v6m-3-3h6M3 9a2 2 0 012-2h14a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+          </svg>
+          Export CSV
+        </button>
+      </div>
+      <div class="cards-container" id="history-cards" style="flex:1;overflow-y:auto;padding:16px 24px;"></div>
+    </div>
+  </div>
+
+  <div class="app-body" id="screen-view">
 
     <!-- ── Input Panel ───────────────────────────────────────────── -->
     <aside class="input-panel" id="input-panel">
@@ -1070,7 +1305,46 @@
 
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
+    /* ─────────────────────────────────────────────────────────────────── */
+    /* Supabase                                                            */
+    /* ─────────────────────────────────────────────────────────────────── */
+    const _sb = supabase.createClient(
+      'https://kfgvhptnmmujdqhtmmyg.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmZ3ZocHRubW11amRxaHRtbXlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MTA0MTYsImV4cCI6MjA5NjM4NjQxNn0.C0OqqCIpbWeopYFOTvvfP9Oyjt6axlsuuuXn2rIUYVs'
+    );
+
+    async function saveScreening(jd, results) {
+      try {
+        const jobRole = results.find(r => r.job_role)?.job_role || 'Unknown Role';
+        const shortlisted = results.filter(r => r.shortlisted).length;
+        const { data: screening, error: sErr } = await _sb
+          .from('screenings')
+          .insert({ job_role: jobRole, jd_text: jd, total_screened: results.length, total_shortlisted: shortlisted })
+          .select('id').single();
+        if (sErr) { console.error('saveScreening:', sErr); return; }
+        const rows = results.map(r => ({
+          screening_id: screening.id,
+          candidate_name: r.candidate_name || '',
+          phone_number: r.phone_number || '',
+          email: r.email || '',
+          resume_filename: r.filename || '',
+          overall_score: r.overall_score || 0,
+          skills_score: r.skills_score || 0,
+          experience_score: r.experience_score || 0,
+          education_score: r.education_score || 0,
+          presentation_score: r.presentation_score || 0,
+          shortlisted: r.shortlisted || false,
+          strengths: r.strengths || [],
+          gaps: r.gaps || [],
+          summary: r.summary || '',
+        }));
+        const { error: cErr } = await _sb.from('candidates').insert(rows);
+        if (cErr) console.error('saveCandidates:', cErr);
+      } catch(e) { console.error('saveScreening error:', e); }
+    }
+
     /* ─────────────────────────────────────────────────────────────────── */
     /* DOM elements                                                        */
     /* ─────────────────────────────────────────────────────────────────── */
@@ -1326,6 +1600,7 @@
 
         lastResults = results;
         displayResults(results);
+        saveScreening(jd, results);
         progressFill.style.width = '100%';
         progressMsg.textContent = 'Done!';
 
@@ -1472,6 +1747,197 @@
       const a = document.createElement('a');
       a.href = url;
       a.download = 'screening_results.csv';
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(url);
+      a.remove();
+    });
+
+    /* ─────────────────────────────────────────────────────────────────── */
+    /* Nav — Screen / History                                              */
+    /* ─────────────────────────────────────────────────────────────────── */
+    const navScreen = document.getElementById('nav-screen');
+    const navHistory = document.getElementById('nav-history');
+    const screenView = document.getElementById('screen-view');
+    const historyView = document.getElementById('history-view');
+
+    navScreen.addEventListener('click', () => {
+      navScreen.classList.add('active');
+      navHistory.classList.remove('active');
+      screenView.style.display = '';
+      historyView.classList.remove('visible');
+    });
+
+    navHistory.addEventListener('click', () => {
+      navHistory.classList.add('active');
+      navScreen.classList.remove('active');
+      screenView.style.display = 'none';
+      historyView.classList.add('visible');
+      loadHistory();
+    });
+
+    /* ─────────────────────────────────────────────────────────────────── */
+    /* History — list & detail                                             */
+    /* ─────────────────────────────────────────────────────────────────── */
+    const screeningList = document.getElementById('screening-list');
+    const historyListView = document.getElementById('history-list-view');
+    const historyDetailView = document.getElementById('history-detail-view');
+    const historyBack = document.getElementById('history-back');
+    const historyCards = document.getElementById('history-cards');
+    const detailTitle = document.getElementById('detail-title');
+    const detailSub = document.getElementById('detail-sub');
+    const historyExportBtn = document.getElementById('history-export-btn');
+
+    let currentDetailCandidates = [];
+
+    async function loadHistory() {
+      screeningList.innerHTML = '<div style="padding:20px;color:var(--text-muted);font-size:13px;">Loading...</div>';
+      const { data, error } = await _sb
+        .from('screenings')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        screeningList.innerHTML = '<div style="padding:20px;color:var(--red);font-size:13px;">Failed to load history.</div>';
+        return;
+      }
+
+      if (!data.length) {
+        screeningList.innerHTML = `
+          <div class="history-empty">
+            <p>No screenings yet</p>
+            <small>Run your first screening and it will appear here</small>
+          </div>`;
+        return;
+      }
+
+      screeningList.innerHTML = '';
+      data.forEach(s => {
+        const date = new Date(s.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        const time = new Date(s.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+        const row = document.createElement('div');
+        row.className = 'screening-row';
+        row.innerHTML = `
+          <div style="flex:1;">
+            <div class="screening-role">${s.job_role}</div>
+            <div class="screening-meta">${date} at ${time}</div>
+          </div>
+          <div class="screening-badges">
+            <span class="badge badge-total">${s.total_screened} screened</span>
+            <span class="badge badge-shortlisted">${s.total_shortlisted} shortlisted</span>
+          </div>
+        `;
+        row.addEventListener('click', () => openScreeningDetail(s));
+        screeningList.appendChild(row);
+      });
+    }
+
+    async function openScreeningDetail(screening) {
+      historyListView.style.display = 'none';
+      historyDetailView.classList.add('visible');
+      historyBack.classList.add('visible');
+
+      const date = new Date(screening.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      detailTitle.textContent = screening.job_role;
+      detailSub.textContent = `${date} · ${screening.total_screened} screened · ${screening.total_shortlisted} shortlisted`;
+
+      historyCards.innerHTML = '<div style="padding:20px;color:var(--text-muted);font-size:13px;">Loading candidates...</div>';
+
+      const { data, error } = await _sb
+        .from('candidates')
+        .select('*')
+        .eq('screening_id', screening.id)
+        .order('overall_score', { ascending: false });
+
+      if (error) {
+        historyCards.innerHTML = '<div style="padding:20px;color:var(--red);font-size:13px;">Failed to load candidates.</div>';
+        return;
+      }
+
+      currentDetailCandidates = data.map(c => ({
+        ...c,
+        filename: c.resume_filename,
+        phone_number: c.phone_number,
+        email: c.email,
+        job_role: screening.job_role,
+      }));
+
+      historyCards.innerHTML = '';
+      const mapped = data.map(c => ({
+        candidate_name: c.candidate_name,
+        filename: c.resume_filename,
+        overall_score: c.overall_score,
+        skills_score: c.skills_score,
+        experience_score: c.experience_score,
+        education_score: c.education_score,
+        presentation_score: c.presentation_score,
+        shortlisted: c.shortlisted,
+        strengths: c.strengths || [],
+        gaps: c.gaps || [],
+        summary: c.summary,
+      }));
+
+      const tempContainer = { innerHTML: '' };
+      mapped.forEach(candidate => {
+        const scoreClass = candidate.overall_score >= 70 ? 'score-green' : candidate.overall_score >= 50 ? 'score-yellow' : 'score-red';
+        const card = document.createElement('div');
+        card.className = 'candidate-card';
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="card-identity">
+              <div class="candidate-name">${candidate.candidate_name}</div>
+              <div class="candidate-file">${candidate.filename}</div>
+            </div>
+            <div class="card-badges">
+              <div class="score-badge ${scoreClass}">${candidate.overall_score}<small>/ 100</small></div>
+              ${candidate.shortlisted ? '<div class="shortlisted-chip"><span>✓</span> Shortlisted</div>' : ''}
+            </div>
+          </div>
+          <div class="score-bars">
+            <div class="score-bar-row"><div class="bar-label">Skills</div><div class="bar-track"><div class="bar-fill skills" style="width:${candidate.skills_score}%"></div></div><div class="bar-score">${candidate.skills_score}</div></div>
+            <div class="score-bar-row"><div class="bar-label">Experience</div><div class="bar-track"><div class="bar-fill experience" style="width:${candidate.experience_score}%"></div></div><div class="bar-score">${candidate.experience_score}</div></div>
+            <div class="score-bar-row"><div class="bar-label">Education</div><div class="bar-track"><div class="bar-fill education" style="width:${candidate.education_score}%"></div></div><div class="bar-score">${candidate.education_score}</div></div>
+            <div class="score-bar-row"><div class="bar-label">Presentation</div><div class="bar-track"><div class="bar-fill presentation" style="width:${candidate.presentation_score}%"></div></div><div class="bar-score">${candidate.presentation_score}</div></div>
+          </div>
+          <div class="card-lists">
+            <div class="list-box"><div class="list-box-title green">✓ Strengths</div>${(candidate.strengths||[]).map(s=>`<div class="list-item"><span class="dot green"></span><span>${s}</span></div>`).join('')}</div>
+            <div class="list-box"><div class="list-box-title red">✗ Gaps</div>${(candidate.gaps||[]).map(g=>`<div class="list-item"><span class="dot red"></span><span>${g}</span></div>`).join('')}</div>
+          </div>
+          <div class="card-summary">${candidate.summary}</div>
+        `;
+        historyCards.appendChild(card);
+      });
+    }
+
+    historyBack.addEventListener('click', () => {
+      historyDetailView.classList.remove('visible');
+      historyBack.classList.remove('visible');
+      historyListView.style.display = 'flex';
+      currentDetailCandidates = [];
+    });
+
+    historyExportBtn.addEventListener('click', () => {
+      if (!currentDetailCandidates.length) return;
+      const escape = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const headers = ['applied_role','candidate_name','candidate_phone_number','candidate_email','resume_filename','overall_score','skills_score','experience_score','education_score','presentation_score','shortlisted','strengths','gaps','summary'];
+      const rows = currentDetailCandidates.map(r => [
+        escape(r.job_role || ''),
+        escape(r.candidate_name),
+        escape(r.phone_number || ''),
+        escape(r.email || ''),
+        escape(r.resume_filename || ''),
+        r.overall_score, r.skills_score, r.experience_score, r.education_score, r.presentation_score,
+        r.shortlisted ? 'Yes' : 'No',
+        escape((r.strengths||[]).join('; ')),
+        escape((r.gaps||[]).join('; ')),
+        escape(r.summary),
+      ]);
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentDetailCandidates[0]?.job_role || 'screening'}_results.csv`;
       document.body.appendChild(a);
       a.click();
       URL.revokeObjectURL(url);
