@@ -90,6 +90,8 @@ async def signup(request: Request) -> JSONResponse:
 
     if not email or not password or not full_name:
         raise HTTPException(status_code=400, detail="email, password, and full_name are required.")
+    if not email.endswith("@nobroker.in"):
+        raise HTTPException(status_code=400, detail="Only @nobroker.in email addresses are allowed.")
 
     sb = _supabase()
 

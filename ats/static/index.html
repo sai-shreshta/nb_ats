@@ -1989,6 +1989,7 @@
       const btn = document.getElementById('signup-btn');
 
       if (!full_name || !email || !password) { showMsg(msg, 'error', 'All fields are required.'); return; }
+      if (!email.endsWith('@nobroker.in')) { showMsg(msg, 'error', 'Only @nobroker.in email addresses are allowed.'); return; }
       if (password.length < 6) { showMsg(msg, 'error', 'Password must be at least 6 characters.'); return; }
       btn.disabled = true; btn.textContent = 'Sending request...';
       msg.style.display = 'none';
