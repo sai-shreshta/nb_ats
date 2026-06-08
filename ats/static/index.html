@@ -1220,6 +1220,335 @@
 
     .toast-close:hover { opacity: 1; }
 
+    /* ── Auth screen ────────────────────────────────────────────── */
+    #auth-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(145deg, #f5e8e8 0%, var(--bg) 60%);
+      padding: 24px;
+    }
+
+    .auth-card {
+      background: var(--chrome-sidebar);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 12px 40px rgba(232,51,58,.10), 0 2px 8px rgba(0,0,0,.06);
+      width: 100%;
+      max-width: 420px;
+      overflow: hidden;
+    }
+
+    .auth-card-top {
+      background: var(--chrome-header);
+      border-bottom: 3px solid var(--primary);
+      padding: 32px 32px 24px;
+      text-align: center;
+    }
+
+    .auth-logo-wrap {
+      width: 68px;
+      height: 68px;
+      background: var(--surface);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      box-shadow: 0 2px 12px rgba(232,51,58,.15);
+      border: 2px solid var(--border);
+    }
+
+    .auth-logo-wrap img { height: 38px; width: auto; }
+
+    .auth-card-top h2 {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      letter-spacing: .2px;
+    }
+
+    .auth-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--chrome-header);
+    }
+
+    .auth-tab {
+      flex: 1;
+      padding: 13px;
+      background: none;
+      border: none;
+      border-bottom: 2.5px solid transparent;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: color var(--transition), border-color var(--transition);
+      margin-bottom: -1px;
+    }
+
+    .auth-tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .auth-body { padding: 24px 32px 28px; background: var(--chrome-sidebar); }
+
+    .auth-field { margin-bottom: 16px; }
+
+    .auth-field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .auth-field input {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .auth-field input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(232,51,58,.10);
+    }
+
+    .auth-submit {
+      width: 100%;
+      padding: 11px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: .3px;
+      margin-top: 4px;
+      transition: opacity var(--transition), box-shadow var(--transition);
+      box-shadow: 0 2px 8px rgba(232,51,58,.25);
+    }
+
+    .auth-submit:hover { opacity: .92; box-shadow: 0 4px 16px rgba(232,51,58,.35); }
+    .auth-submit:disabled { background: #d1d5db; color: #9ca3af; cursor: not-allowed; box-shadow: none; }
+
+    .auth-msg {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      font-weight: 500;
+      text-align: center;
+    }
+
+    .auth-msg.error { background: var(--red-bg); color: var(--red); border: 1px solid #fecaca; }
+    .auth-msg.success { background: var(--green-bg); color: var(--green); border: 1px solid #bbf7d0; }
+    .auth-msg.info { background: var(--yellow-bg); color: var(--yellow); border: 1px solid #fde68a; }
+
+    /* ── Pending screen ──────────────────────────────────────────── */
+    #pending-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+    }
+
+    .pending-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.06);
+      max-width: 400px;
+      width: 100%;
+      margin: 24px;
+      padding: 40px 32px;
+      text-align: center;
+    }
+
+    .pending-card .icon {
+      width: 56px;
+      height: 56px;
+      background: var(--yellow-bg);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 18px;
+      color: var(--yellow);
+    }
+
+    .pending-card h2 { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
+    .pending-card p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+    .pending-logout {
+      margin-top: 24px;
+      padding: 9px 20px;
+      background: none;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .pending-logout:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── Header user info ───────────────────────────────────────── */
+    .header-user {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-user-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .header-role-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+
+    .header-role-badge.admin { background: var(--primary); color: #fff; }
+    .header-role-badge.user { background: var(--border); color: var(--text-secondary); }
+
+    .logout-btn {
+      padding: 5px 12px;
+      background: none;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: border-color var(--transition), color var(--transition);
+    }
+
+    .logout-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── Admin view ──────────────────────────────────────────────── */
+    #admin-view {
+      display: none;
+      flex-direction: column;
+      height: calc(100vh - 95px);
+      overflow-y: auto;
+      padding: 24px 32px;
+      gap: 28px;
+    }
+
+    #admin-view.visible { display: flex; }
+
+    .admin-section-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--primary);
+      padding-left: 8px;
+      border-left: 2px solid var(--primary);
+      margin-bottom: 14px;
+    }
+
+    .admin-table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .admin-table th {
+      background: var(--chrome-sidebar);
+      text-align: left;
+      padding: 10px 16px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .7px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .admin-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+      color: var(--text);
+    }
+
+    .admin-table tr:last-child td { border-bottom: none; }
+    .admin-table tr:hover td { background: var(--primary-light); }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 10px;
+    }
+
+    .status-badge.approved { background: var(--green-bg); color: var(--green); }
+    .status-badge.pending { background: var(--yellow-bg); color: var(--yellow); }
+
+    .admin-action-btn {
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid;
+      transition: background var(--transition), color var(--transition);
+      margin-right: 4px;
+    }
+
+    .admin-action-btn.approve { border-color: var(--green); color: var(--green); background: none; }
+    .admin-action-btn.approve:hover { background: var(--green); color: #fff; }
+    .admin-action-btn.revoke { border-color: var(--yellow); color: var(--yellow); background: none; }
+    .admin-action-btn.revoke:hover { background: var(--yellow); color: #fff; }
+    .admin-action-btn.danger { border-color: var(--red); color: var(--red); background: none; }
+    .admin-action-btn.danger:hover { background: var(--red); color: #fff; }
+    .admin-action-btn.role { border-color: var(--primary); color: var(--primary); background: none; }
+    .admin-action-btn.role:hover { background: var(--primary); color: #fff; }
+
+    .admin-empty {
+      padding: 28px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
     /* ── Responsive ─────────────────────────────────────────────── */
     @media (max-width: 800px) {
       .app-body {
@@ -1243,16 +1572,72 @@
 
 <body>
 
+  <!-- ── Auth Screen ─────────────────────────────────────────────── -->
+  <div id="auth-screen" style="display:none;">
+    <div class="auth-card">
+      <div class="auth-card-top">
+        <div class="auth-logo-wrap">
+          <img src="/nb_logo_trans.png" alt="NoBroker" />
+        </div>
+        <h2>Resume Screener &mdash; Internal Tool</h2>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="auth-tab-login">Login</button>
+        <button class="auth-tab" id="auth-tab-signup">Request Access</button>
+      </div>
+      <div class="auth-body">
+        <!-- Login form -->
+        <div id="auth-login-form">
+          <div class="auth-field"><label>Email</label><input type="email" id="login-email" placeholder="you@nobroker.in" autocomplete="email" /></div>
+          <div class="auth-field"><label>Password</label><input type="password" id="login-password" placeholder="Password" autocomplete="current-password" /></div>
+          <button class="auth-submit" id="login-btn">Login</button>
+          <div class="auth-msg" id="login-msg" style="display:none;"></div>
+        </div>
+        <!-- Signup form -->
+        <div id="auth-signup-form" style="display:none;">
+          <div class="auth-field"><label>Full Name</label><input type="text" id="signup-name" placeholder="Your full name" autocomplete="name" /></div>
+          <div class="auth-field"><label>Email</label><input type="email" id="signup-email" placeholder="you@nobroker.in" autocomplete="email" /></div>
+          <div class="auth-field"><label>Password</label><input type="password" id="signup-password" placeholder="Choose a password" autocomplete="new-password" /></div>
+          <button class="auth-submit" id="signup-btn">Request Access</button>
+          <div class="auth-msg" id="signup-msg" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Pending Screen ──────────────────────────────────────────── -->
+  <div id="pending-screen" style="display:none;">
+    <div class="pending-card">
+      <div class="icon">
+        <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <h2>Access Pending</h2>
+      <p>Your request has been received. The admin will review and approve your account. You will be able to log in once approved.</p>
+      <button class="pending-logout" onclick="logout()">Back to Login</button>
+    </div>
+  </div>
+
+  <!-- ── Main App ────────────────────────────────────────────────── -->
+  <div id="main-app" style="display:none; flex-direction:column; height:100vh; overflow:hidden;">
+
   <!-- ── Header ─────────────────────────────────────────────────── -->
   <header class="app-header">
     <img src="/nb_logo_trans.png" alt="NoBroker" style="height:28px;width:auto;flex-shrink:0;object-fit:contain;" />
     <div style="width:1px;height:20px;background:var(--border);margin:0 4px;"></div>
     <span style="font-size:13px;font-weight:500;color:var(--text-secondary);">Resume Screener</span>
+    <div class="header-user" id="header-user">
+      <span class="header-user-name" id="header-user-name"></span>
+      <span class="header-role-badge" id="header-role-badge"></span>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
   </header>
 
   <nav class="app-nav">
     <button class="nav-tab active" id="nav-screen">Screen</button>
     <button class="nav-tab" id="nav-history">History</button>
+    <button class="nav-tab" id="nav-admin" style="display:none;">Admin</button>
   </nav>
 
   <!-- ── History View ───────────────────────────────────────────── -->
@@ -1457,11 +1842,303 @@
 
   </div>
 
+  <!-- ── Admin View ─────────────────────────────────────────────── -->
+  <div id="admin-view">
+    <div>
+      <div class="admin-section-title">Pending Requests</div>
+      <div class="admin-table-wrap" id="admin-pending-wrap">
+        <div class="admin-empty" id="admin-pending-empty">No pending requests.</div>
+        <table class="admin-table" id="admin-pending-table" style="display:none;">
+          <thead><tr><th>Name</th><th>Email</th><th>Requested</th><th>Actions</th></tr></thead>
+          <tbody id="admin-pending-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="admin-section-title">All Users</div>
+      <div class="admin-table-wrap" id="admin-users-wrap">
+        <div class="admin-empty" id="admin-users-loading">Loading...</div>
+        <table class="admin-table" id="admin-users-table" style="display:none;">
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Requested</th><th>Approved By</th><th>Actions</th></tr></thead>
+          <tbody id="admin-users-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast">
     <span id="toast-msg"></span>
     <button class="toast-retry" id="toast-retry" style="display:none;">Retry</button>
     <button class="toast-close" id="toast-close">✕</button>
   </div>
+
+  </div><!-- /#main-app -->
+
+  <script>
+    /* ── Auth state & helpers ──────────────────────────────────────── */
+    let authState = null; // { access_token, email, full_name, role }
+
+    function authFetch(url, options = {}) {
+      const headers = { ...(options.headers || {}) };
+      if (authState?.access_token) headers['Authorization'] = `Bearer ${authState.access_token}`;
+      return fetch(url, { ...options, headers }).then(res => {
+        if (res.status === 401) { logout(); throw new Error('Session expired.'); }
+        return res;
+      });
+    }
+
+    function logout() {
+      authState = null;
+      localStorage.removeItem('ats_auth');
+      showAuthScreen();
+    }
+
+    function showAuthScreen() {
+      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('pending-screen').style.display = 'none';
+      document.getElementById('main-app').style.display = 'none';
+    }
+
+    function showPendingScreen() {
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('pending-screen').style.display = 'flex';
+      document.getElementById('main-app').style.display = 'none';
+    }
+
+    function showMainApp() {
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('pending-screen').style.display = 'none';
+      document.getElementById('main-app').style.display = 'flex';
+      // Populate header
+      document.getElementById('header-user-name').textContent = authState.full_name || authState.email;
+      const badge = document.getElementById('header-role-badge');
+      badge.textContent = authState.role === 'admin' ? 'Admin' : 'User';
+      badge.className = `header-role-badge ${authState.role === 'admin' ? 'admin' : 'user'}`;
+      // Show admin nav tab if admin
+      if (authState.role === 'admin') document.getElementById('nav-admin').style.display = '';
+    }
+
+    async function initAuth() {
+      const stored = JSON.parse(localStorage.getItem('ats_auth') || 'null');
+      if (!stored?.access_token) { showAuthScreen(); return; }
+      try {
+        const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${stored.access_token}` } });
+        if (!res.ok) throw new Error();
+        const user = await res.json();
+        if (!user.approved) { showPendingScreen(); return; }
+        authState = { ...stored, role: user.role, full_name: user.full_name };
+        localStorage.setItem('ats_auth', JSON.stringify(authState));
+        showMainApp();
+      } catch {
+        localStorage.removeItem('ats_auth');
+        showAuthScreen();
+      }
+    }
+
+    /* ── Auth tab toggle ───────────────────────────────────────────── */
+    document.getElementById('auth-tab-login').addEventListener('click', () => {
+      document.getElementById('auth-tab-login').classList.add('active');
+      document.getElementById('auth-tab-signup').classList.remove('active');
+      document.getElementById('auth-login-form').style.display = '';
+      document.getElementById('auth-signup-form').style.display = 'none';
+    });
+
+    document.getElementById('auth-tab-signup').addEventListener('click', () => {
+      document.getElementById('auth-tab-signup').classList.add('active');
+      document.getElementById('auth-tab-login').classList.remove('active');
+      document.getElementById('auth-login-form').style.display = 'none';
+      document.getElementById('auth-signup-form').style.display = '';
+    });
+
+    /* ── Login ─────────────────────────────────────────────────────── */
+    document.getElementById('login-btn').addEventListener('click', async () => {
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const msg = document.getElementById('login-msg');
+      const btn = document.getElementById('login-btn');
+
+      if (!email || !password) { showMsg(msg, 'error', 'Please enter your email and password.'); return; }
+      btn.disabled = true; btn.textContent = 'Logging in...';
+      msg.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showMsg(msg, 'error', data.detail || 'Login failed.'); return; }
+        if (data.status === 'pending') { showPendingScreen(); return; }
+        authState = { access_token: data.access_token, email: data.email, full_name: data.full_name, role: data.role };
+        localStorage.setItem('ats_auth', JSON.stringify(authState));
+        showMainApp();
+      } catch { showMsg(msg, 'error', 'Network error. Please try again.'); }
+      finally { btn.disabled = false; btn.textContent = 'Login'; }
+    });
+
+    document.getElementById('login-password').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('login-btn').click();
+    });
+
+    /* ── Signup ────────────────────────────────────────────────────── */
+    document.getElementById('signup-btn').addEventListener('click', async () => {
+      const full_name = document.getElementById('signup-name').value.trim();
+      const email = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value;
+      const msg = document.getElementById('signup-msg');
+      const btn = document.getElementById('signup-btn');
+
+      if (!full_name || !email || !password) { showMsg(msg, 'error', 'All fields are required.'); return; }
+      if (password.length < 6) { showMsg(msg, 'error', 'Password must be at least 6 characters.'); return; }
+      btn.disabled = true; btn.textContent = 'Sending request...';
+      msg.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/auth/signup', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ full_name, email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showMsg(msg, 'error', data.detail || 'Request failed.'); return; }
+        if (data.status === 'pending') {
+          showMsg(msg, 'info', 'Request sent! The admin will review and approve your account.');
+        } else if (data.status === 'already_approved') {
+          showMsg(msg, 'success', 'Your account is already approved. Please log in.');
+        } else if (data.status === 'admin') {
+          showMsg(msg, 'success', 'Admin account created. Please log in.');
+        }
+      } catch { showMsg(msg, 'error', 'Network error. Please try again.'); }
+      finally { btn.disabled = false; btn.textContent = 'Request Access'; }
+    });
+
+    function showMsg(el, type, text) {
+      el.className = `auth-msg ${type}`;
+      el.textContent = text;
+      el.style.display = '';
+    }
+
+    /* ── Nav admin tab ─────────────────────────────────────────────── */
+    document.getElementById('nav-admin').addEventListener('click', () => {
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('nav-admin').classList.add('active');
+      document.getElementById('screen-view').style.display = 'none';
+      document.getElementById('history-view').classList.remove('visible');
+      document.getElementById('admin-view').classList.add('visible');
+      loadAdminUsers();
+    });
+
+    /* ── Admin ─────────────────────────────────────────────────────── */
+    async function loadAdminUsers() {
+      document.getElementById('admin-users-loading').style.display = '';
+      document.getElementById('admin-users-table').style.display = 'none';
+      try {
+        const res = await authFetch('/api/admin/users');
+        if (!res.ok) throw new Error();
+        const users = await res.json();
+        renderAdminUsers(users);
+      } catch { document.getElementById('admin-users-loading').textContent = 'Failed to load users.'; }
+    }
+
+    function renderAdminUsers(users) {
+      const pending = users.filter(u => !u.approved);
+      const approved = users.filter(u => u.approved);
+
+      // Pending table
+      const pendingBody = document.getElementById('admin-pending-body');
+      pendingBody.innerHTML = '';
+      if (pending.length === 0) {
+        document.getElementById('admin-pending-empty').style.display = '';
+        document.getElementById('admin-pending-table').style.display = 'none';
+      } else {
+        document.getElementById('admin-pending-empty').style.display = 'none';
+        document.getElementById('admin-pending-table').style.display = '';
+        pending.forEach(u => {
+          const tr = document.createElement('tr');
+          const reqDate = u.requested_at ? new Date(u.requested_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '-';
+          tr.innerHTML = `
+            <td style="font-weight:600;">${u.full_name || '-'}</td>
+            <td style="color:var(--text-secondary);">${u.email}</td>
+            <td style="color:var(--text-muted);font-size:12px;">${reqDate}</td>
+            <td>
+              <button class="admin-action-btn approve" onclick="adminApprove('${u.id}')">Approve</button>
+              <button class="admin-action-btn danger" onclick="adminDelete('${u.id}')">Reject</button>
+            </td>
+          `;
+          pendingBody.appendChild(tr);
+        });
+      }
+
+      // All users table
+      const usersBody = document.getElementById('admin-users-body');
+      usersBody.innerHTML = '';
+      document.getElementById('admin-users-loading').style.display = 'none';
+      document.getElementById('admin-users-table').style.display = '';
+      if (users.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px;">No users yet.</td>';
+        usersBody.appendChild(tr);
+      } else {
+        users.forEach(u => {
+          const tr = document.createElement('tr');
+          const reqDate = u.requested_at ? new Date(u.requested_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '-';
+          const approvedBy = u.approved_by || '-';
+          const isCurrentUser = u.email === authState?.email;
+          tr.innerHTML = `
+            <td style="font-weight:600;">${u.full_name || '-'}</td>
+            <td style="color:var(--text-secondary);">${u.email}</td>
+            <td><span class="header-role-badge ${u.role === 'admin' ? 'admin' : 'user'}" style="font-size:10px;">${u.role}</span></td>
+            <td><span class="status-badge ${u.approved ? 'approved' : 'pending'}">${u.approved ? 'Active' : 'Pending'}</span></td>
+            <td style="color:var(--text-muted);font-size:12px;">${reqDate}</td>
+            <td style="color:var(--text-muted);font-size:12px;">${approvedBy}</td>
+            <td>${isCurrentUser ? '<span style="color:var(--text-muted);font-size:11px;">You</span>' : `
+              ${!u.approved ? `<button class="admin-action-btn approve" onclick="adminApprove('${u.id}')">Approve</button>` : `<button class="admin-action-btn revoke" onclick="adminRevoke('${u.id}')">Revoke</button>`}
+              <button class="admin-action-btn role" onclick="adminToggleRole('${u.id}', '${u.role}')">${u.role === 'admin' ? 'Remove Admin' : 'Make Admin'}</button>
+              <button class="admin-action-btn danger" onclick="adminDelete('${u.id}')">Delete</button>
+            `}</td>
+          `;
+          usersBody.appendChild(tr);
+        });
+      }
+    }
+
+    async function adminApprove(id) {
+      await authFetch(`/api/admin/users/${id}/approve`, { method: 'POST' });
+      loadAdminUsers();
+    }
+
+    async function adminRevoke(id) {
+      if (!confirm('Revoke access for this user?')) return;
+      await authFetch(`/api/admin/users/${id}/revoke`, { method: 'POST' });
+      loadAdminUsers();
+    }
+
+    async function adminDelete(id) {
+      if (!confirm('Permanently delete this user? This cannot be undone.')) return;
+      await authFetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+      loadAdminUsers();
+    }
+
+    async function adminToggleRole(id, currentRole) {
+      const newRole = currentRole === 'admin' ? 'user' : 'admin';
+      await authFetch(`/api/admin/users/${id}/role`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole }),
+      });
+      loadAdminUsers();
+    }
+
+    /* ── Reset nav to screen when switching back ───────────────────── */
+    document.getElementById('nav-screen').addEventListener('click', () => {
+      document.getElementById('admin-view').classList.remove('visible');
+    });
+    document.getElementById('nav-history').addEventListener('click', () => {
+      document.getElementById('admin-view').classList.remove('visible');
+    });
+
+    /* ── Boot ──────────────────────────────────────────────────────── */
+    initAuth();
+
+  </script>
 
   <script>
 
@@ -1504,7 +2181,7 @@
           gaps: r.gaps || [],
           summary: r.summary || '',
         }));
-        const res = await fetch('/api/save-screening', {
+        const res = await authFetch('/api/save-screening', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ job_role: jobRole, jd_text: jd, total_screened: results.length, total_shortlisted: shortlisted, candidates }),
@@ -1674,7 +2351,7 @@
       const form = new FormData();
       form.append('files', file);
       try {
-        const resp = await fetch('/api/extract', { method: 'POST', body: form });
+        const resp = await authFetch('/api/extract', { method: 'POST', body: form });
         const [result] = await resp.json();
         if (result.resume_text) {
           jdInput.value = result.resume_text;
@@ -1737,7 +2414,7 @@
         const extractForm = new FormData();
         for (let file of files) extractForm.append('files', file);
 
-        const extractResp = await fetch('/api/extract', { method: 'POST', body: extractForm });
+        const extractResp = await authFetch('/api/extract', { method: 'POST', body: extractForm });
         if (!extractResp.ok) throw new Error(`Extract failed: ${extractResp.status}`);
         const extracted = await extractResp.json();
 
@@ -1758,7 +2435,7 @@
             scoreForm.append('jd', jd);
             scoreForm.append('filename', filename);
             scoreForm.append('resume_text', resume_text);
-            const scoreResp = await fetch('/api/score', { method: 'POST', body: scoreForm });
+            const scoreResp = await authFetch('/api/score', { method: 'POST', body: scoreForm });
             if (!scoreResp.ok) throw new Error(`Score failed for ${filename}: ${scoreResp.status}`);
             return await scoreResp.json();
           }));
@@ -1968,7 +2645,7 @@
 
       let screenings, allCandidates;
       try {
-        const res = await fetch('/api/history');
+        const res = await authFetch('/api/history');
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
         screenings = data.screenings;
@@ -2033,7 +2710,7 @@
         row.innerHTML = `
           <div style="flex:1;min-width:0;">
             <div class="screening-role">${s.job_role}</div>
-            <div class="screening-meta">${date} at ${time}</div>
+            <div class="screening-meta">${date} at ${time}${s.recorded_by ? ' &middot; ' + s.recorded_by : ''}</div>
           </div>
           <div class="screening-badges">
             <span class="badge badge-total">${s.total_screened} screened</span>
@@ -2055,13 +2732,13 @@
 
       const date = new Date(screening.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
       detailTitle.textContent = screening.job_role;
-      detailSub.textContent = `${date} · ${screening.total_screened} screened · ${screening.total_shortlisted} shortlisted`;
+      detailSub.textContent = `${date} · ${screening.total_screened} screened · ${screening.total_shortlisted} shortlisted${screening.recorded_by ? ' · by ' + screening.recorded_by : ''}`;
 
       historyCards.innerHTML = '<div style="padding:20px;color:var(--text-muted);font-size:13px;">Loading candidates...</div>';
 
       let data;
       try {
-        const res = await fetch(`/api/history/${screening.id}/candidates`);
+        const res = await authFetch(`/api/history/${screening.id}/candidates`);
         if (!res.ok) throw new Error(await res.text());
         data = await res.json();
       } catch(e) {
