@@ -341,6 +341,43 @@ async def admin_set_role(
     return JSONResponse({"ok": True})
 
 
+@app.post("/api/export/candidates")
+async def export_candidates(
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> JSONResponse:
+    _require_approved(authorization)
+    body = await request.json()
+    screening_ids = body.get("screening_ids") or []
+    if not screening_ids:
+        raise HTTPException(status_code=400, detail="screening_ids is required.")
+
+    sb = _supabase()
+    # Fetch screenings to get job_role labels
+    screenings_res = sb.table("screenings").select("id, job_role").in_("id", screening_ids).execute()
+    role_map = {s["id"]: s["job_role"] for s in (screenings_res.data or [])}
+
+    # Fetch all candidates for those screenings
+    candidates_res = sb.table("candidates").select("*").in_("screening_id", screening_ids).execute()
+    rows = candidates_res.data or []
+
+    # Attach job_role and deduplicate by phone → email → treat as unique
+    # When duplicate, keep the row with the highest overall_score
+    seen: dict[str, dict] = {}
+    for row in rows:
+        row["applied_role"] = role_map.get(row.get("screening_id"), "")
+        key = (row.get("phone_number") or "").strip()
+        if not key:
+            key = (row.get("email") or "").strip().lower()
+        if not key:
+            key = f"__unique_{row['id']}"
+        existing = seen.get(key)
+        if existing is None or (row.get("overall_score") or 0) > (existing.get("overall_score") or 0):
+            seen[key] = row
+
+    return JSONResponse(list(seen.values()))
+
+
 # Serve static files — local dev only. On Vercel all traffic hits the function.
 _static = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(_static):

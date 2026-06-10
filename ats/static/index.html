@@ -1037,9 +1037,13 @@
     .history-header {
       padding: 20px 24px 0;
       flex-shrink: 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
     }
 
-    .history-header h2 {
+    .history-header-text h2 {
       font-size: 14px;
       font-weight: 700;
       color: var(--text);
@@ -1047,11 +1051,137 @@
       letter-spacing: 0.06em;
     }
 
-    .history-header p {
+    .history-header-text p {
       font-size: 12px;
       color: var(--text-muted);
       margin-top: 3px;
     }
+
+    .btn-select-sessions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color var(--transition), color var(--transition), background var(--transition);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .btn-select-sessions:hover,
+    .btn-select-sessions.active {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    /* Checkbox on screening rows */
+    .row-checkbox-wrap {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      flex-shrink: 0;
+      margin-right: 4px;
+    }
+
+    .select-mode .row-checkbox-wrap { display: flex; }
+
+    .row-checkbox {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color var(--transition), background var(--transition);
+      flex-shrink: 0;
+    }
+
+    .screening-row.export-selected .row-checkbox {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .screening-row.export-selected {
+      border-left-color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    /* Floating export action bar */
+    .export-action-bar {
+      position: sticky;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border-top: 2px solid var(--primary);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 -4px 20px rgba(232, 51, 58, .12);
+      transform: translateY(100%);
+      transition: transform 0.2s ease;
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    .export-action-bar.visible { transform: translateY(0); }
+
+    .export-action-bar-label {
+      flex: 1;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .export-action-bar-label strong {
+      color: var(--primary);
+    }
+
+    .btn-export-distinct {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 16px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+
+    .btn-export-distinct:hover { background: var(--primary-dark); }
+    .btn-export-distinct:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .btn-clear-selection {
+      padding: 7px 12px;
+      background: none;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: border-color var(--transition), color var(--transition);
+    }
+
+    .btn-clear-selection:hover { border-color: var(--text-secondary); color: var(--text); }
 
     .screening-list {
       flex: 1;
@@ -1750,10 +1880,28 @@
         <div class="history-stat-card"><div class="history-stat-label">Total Screened</div><div class="history-stat-value" id="hs-screened">-</div></div>
       </div>
       <div class="history-header">
-        <h2>Past Screenings</h2>
-        <p>Click any run to view its candidates</p>
+        <div class="history-header-text">
+          <h2>Past Screenings</h2>
+          <p id="history-subtext">Click any run to view its candidates</p>
+        </div>
+        <button class="btn-select-sessions" id="btn-select-sessions" type="button">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+          </svg>
+          Select
+        </button>
       </div>
       <div class="screening-list" id="screening-list"></div>
+      <div class="export-action-bar" id="export-action-bar">
+        <div class="export-action-bar-label"><strong id="export-selected-count">0</strong> session(s) selected &middot; export will deduplicate candidates by phone / email</div>
+        <button class="btn-clear-selection" id="btn-clear-selection" type="button">Clear</button>
+        <button class="btn-export-distinct" id="btn-export-distinct" type="button">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          Export Distinct Candidates
+        </button>
+      </div>
     </div>
 
     <!-- Detail view -->
@@ -2861,6 +3009,88 @@ Competencies to check while interviewing for the Role:
     const historyDetailView = document.getElementById('history-detail-view');
     const historyBack = document.getElementById('history-back');
     const historyCards = document.getElementById('history-cards');
+    const btnSelectSessions = document.getElementById('btn-select-sessions');
+    const exportActionBar = document.getElementById('export-action-bar');
+    const exportSelectedCount = document.getElementById('export-selected-count');
+    const btnClearSelection = document.getElementById('btn-clear-selection');
+    const btnExportDistinct = document.getElementById('btn-export-distinct');
+    const historySubtext = document.getElementById('history-subtext');
+
+    let selectMode = false;
+    const selectedSessionIds = new Set();
+
+    function setSelectMode(on) {
+      selectMode = on;
+      btnSelectSessions.classList.toggle('active', on);
+      btnSelectSessions.textContent = on ? 'Done' : '';
+      if (on) {
+        btnSelectSessions.innerHTML = `<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg> Done`;
+      } else {
+        btnSelectSessions.innerHTML = `<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg> Select`;
+      }
+      screeningList.classList.toggle('select-mode', on);
+      historySubtext.textContent = on ? 'Tap sessions to select them for export' : 'Click any run to view its candidates';
+      if (!on) {
+        selectedSessionIds.clear();
+        screeningList.querySelectorAll('.screening-row').forEach(r => r.classList.remove('export-selected'));
+        updateExportBar();
+      }
+    }
+
+    function updateExportBar() {
+      const count = selectedSessionIds.size;
+      exportSelectedCount.textContent = count;
+      exportActionBar.classList.toggle('visible', count > 0);
+    }
+
+    btnSelectSessions.addEventListener('click', () => setSelectMode(!selectMode));
+
+    btnClearSelection.addEventListener('click', () => {
+      selectedSessionIds.clear();
+      screeningList.querySelectorAll('.screening-row').forEach(r => r.classList.remove('export-selected'));
+      updateExportBar();
+    });
+
+    btnExportDistinct.addEventListener('click', async () => {
+      if (!selectedSessionIds.size) return;
+      btnExportDistinct.disabled = true;
+      btnExportDistinct.textContent = 'Exporting…';
+      try {
+        const res = await authFetch('/api/export/candidates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ screening_ids: [...selectedSessionIds] }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const candidates = await res.json();
+        const escape = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+        const headers = ['applied_role','candidate_name','candidate_phone_number','candidate_email','resume_filename','overall_score','skills_score','experience_score','education_score','presentation_score','shortlisted','strengths','gaps','summary'];
+        const rows = candidates.map(r => [
+          escape(r.applied_role || ''),
+          escape(r.candidate_name || ''),
+          escape(r.phone_number || ''),
+          escape(r.email || ''),
+          escape(r.resume_filename || ''),
+          r.overall_score || 0, r.skills_score || 0, r.experience_score || 0, r.education_score || 0, r.presentation_score || 0,
+          r.shortlisted ? 'Yes' : 'No',
+          escape((r.strengths || []).join('; ')),
+          escape((r.gaps || []).join('; ')),
+          escape(r.summary || ''),
+        ]);
+        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `candidates_export_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click(); URL.revokeObjectURL(url);
+        setSelectMode(false);
+      } catch (e) {
+        alert('Export failed: ' + e.message);
+      } finally {
+        btnExportDistinct.disabled = false;
+        btnExportDistinct.innerHTML = `<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> Export Distinct Candidates`;
+      }
+    });
     const detailTitle = document.getElementById('detail-title');
     const detailSub = document.getElementById('detail-sub');
     const historyExportBtn = document.getElementById('history-export-btn');
@@ -2936,6 +3166,13 @@ Competencies to check while interviewing for the Role:
         const row = document.createElement('div');
         row.className = 'screening-row';
         row.innerHTML = `
+          <div class="row-checkbox-wrap">
+            <div class="row-checkbox">
+              <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="3.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+          </div>
           <div style="flex:1;min-width:0;">
             <div class="screening-role">${s.job_role}</div>
             <div class="screening-meta">${date} at ${time}${s.recorded_by ? ' &middot; ' + s.recorded_by : ''}</div>
@@ -2948,7 +3185,20 @@ Competencies to check while interviewing for the Role:
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
           </svg>
         `;
-        row.addEventListener('click', () => openScreeningDetail(s));
+        row.addEventListener('click', () => {
+          if (selectMode) {
+            if (selectedSessionIds.has(s.id)) {
+              selectedSessionIds.delete(s.id);
+              row.classList.remove('export-selected');
+            } else {
+              selectedSessionIds.add(s.id);
+              row.classList.add('export-selected');
+            }
+            updateExportBar();
+          } else {
+            openScreeningDetail(s);
+          }
+        });
         screeningList.appendChild(row);
       });
     }
