@@ -1700,16 +1700,11 @@
           </svg>
           Job Description <span class="req">*</span>
         </div>
-        <!-- Preset JD selector -->
-        <select id="jd-preset" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;margin-bottom:8px;cursor:pointer;">
-          <option value="">— Load a preset JD —</option>
-          <option value="rm">Relationship Manager</option>
-          <option value="ca">Client Advisor</option>
-        </select>
         <!-- Mode toggle -->
         <div class="jd-mode-tabs">
           <button class="jd-mode-tab active" id="jd-tab-text" type="button">Paste Text</button>
           <button class="jd-mode-tab" id="jd-tab-file" type="button">Upload File</button>
+          <button class="jd-mode-tab" id="jd-tab-preset" type="button">Select Role</button>
         </div>
         <!-- Text mode -->
         <div id="jd-text-panel">
@@ -1724,6 +1719,14 @@
             <small>Accepts .pdf or .docx</small>
           </div>
           <div class="jd-file-selected" id="jd-file-selected" style="display:none;"></div>
+        </div>
+        <!-- Preset mode -->
+        <div id="jd-preset-panel" style="display:none;">
+          <select id="jd-preset" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;cursor:pointer;">
+            <option value="">— Select a role —</option>
+            <option value="rm">Relationship Manager</option>
+            <option value="ca">Client Advisor</option>
+          </select>
         </div>
       </div>
 
@@ -2206,8 +2209,10 @@
     /* ─────────────────────────────────────────────────────────────────── */
     const jdTextPanel = document.getElementById('jd-text-panel');
     const jdFilePanel = document.getElementById('jd-file-panel');
+    const jdPresetPanel = document.getElementById('jd-preset-panel');
     const jdTabText = document.getElementById('jd-tab-text');
     const jdTabFile = document.getElementById('jd-tab-file');
+    const jdTabPreset = document.getElementById('jd-tab-preset');
     const jdInput = document.getElementById('jd-input');
     const jdFileInput = document.getElementById('jd-file-input');
     const jdFileSelected = document.getElementById('jd-file-selected');
@@ -2334,15 +2339,28 @@
     jdTabText.addEventListener('click', () => {
       jdTabText.classList.add('active');
       jdTabFile.classList.remove('active');
+      jdTabPreset.classList.remove('active');
       jdTextPanel.style.display = 'block';
       jdFilePanel.style.display = 'none';
+      jdPresetPanel.style.display = 'none';
     });
 
     jdTabFile.addEventListener('click', () => {
       jdTabFile.classList.add('active');
       jdTabText.classList.remove('active');
+      jdTabPreset.classList.remove('active');
       jdTextPanel.style.display = 'none';
       jdFilePanel.style.display = 'block';
+      jdPresetPanel.style.display = 'none';
+    });
+
+    jdTabPreset.addEventListener('click', () => {
+      jdTabPreset.classList.add('active');
+      jdTabText.classList.remove('active');
+      jdTabFile.classList.remove('active');
+      jdTextPanel.style.display = 'none';
+      jdFilePanel.style.display = 'none';
+      jdPresetPanel.style.display = 'block';
     });
 
     /* ─────────────────────────────────────────────────────────────────── */
@@ -2423,13 +2441,8 @@ Competencies to check while interviewing for the Role:
 
     document.getElementById('jd-preset').addEventListener('change', function () {
       const text = PRESET_JDS[this.value];
-      if (!text) return;
-      jdInput.value = text;
-      // Switch to text mode
-      jdTabText.classList.add('active');
-      jdTabFile.classList.remove('active');
-      jdTextPanel.style.display = 'block';
-      jdFilePanel.style.display = 'none';
+      jdInput.value = text || '';
+      updateScreenBtn();
     });
 
     /* ─────────────────────────────────────────────────────────────────── */
