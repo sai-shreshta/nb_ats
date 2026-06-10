@@ -1700,6 +1700,12 @@
           </svg>
           Job Description <span class="req">*</span>
         </div>
+        <!-- Preset JD selector -->
+        <select id="jd-preset" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;margin-bottom:8px;cursor:pointer;">
+          <option value="">— Load a preset JD —</option>
+          <option value="rm">Relationship Manager</option>
+          <option value="ca">Client Advisor</option>
+        </select>
         <!-- Mode toggle -->
         <div class="jd-mode-tabs">
           <button class="jd-mode-tab active" id="jd-tab-text" type="button">Paste Text</button>
@@ -2337,6 +2343,93 @@
       jdTabText.classList.remove('active');
       jdTextPanel.style.display = 'none';
       jdFilePanel.style.display = 'block';
+    });
+
+    /* ─────────────────────────────────────────────────────────────────── */
+    /* Preset JDs                                                          */
+    /* ─────────────────────────────────────────────────────────────────── */
+    const PRESET_JDS = {
+      rm: `Role: Relationship Manager | NoBroker
+
+About the Company:
+NoBroker is World's Largest NoBrokerage Property site offering end to end services in the real estate space. We are also India's First Prop-Teah unicorn with a billion dollar valuation.
+
+At NoBroker Builder Channel, we provide seamless experience to future homeowners. We cater to 6 major geographies now - Bangalore, Mumbai, Pune, Hyderabad, NCR, and Chennai.
+
+About the Role:
+The Relationship Manager is an important role as we help customers find the right projects that match their requirements. Encourage the customer to visit the property by generating interest in the suggested project.
+
+Key Responsibilities:
+• Contact potential customers on call, understand their requirements and persuade them to schedule an appointment with the sales team
+• Answer customer questions and concerns regarding the projects pitched.
+• Achieve daily, weekly and monthly targets.
+• Follow up on leads and make subsequent calls for scheduling site visits.
+• Collaborate with the sales team to ensure smooth customer experience
+• Handle customer objections and provide rebuttals and resolve issues in a timely and professional manner.
+• Meet personal and team qualitative and quantitative targets.
+
+Pre-Requisites:
+• Proven experience as a Relationship Manager in Pre-Sales or inside sales.
+• Excellent communication and interpersonal skills.
+• Ability to convince, persuade, and handle objections effectively.
+• Knowledge of sales principles and techniques.
+• Good locality understanding.
+• Ability to work under pressure and meet sales targets.
+• Fluency in the local language and English.
+• Working Days: 6 days (Saturday and Sunday working)`,
+
+      ca: `Role: Client Advisor | NoBroker
+
+About the Company:
+NoBroker is World's Largest NoBrokerage Property site offering end to end services in the real estate space. We are also India's First Prop-Teah unicorn with a billion dollar valuation.
+
+At NoBroker Builder Channel, we provide seamless experience to future homeowners. We cater to 6 major geographies now - Bangalore, Mumbai, Pune, Hyderabad, NCR, and Chennai.
+
+About the Role:
+The role of a Client Advisor is crucial as it is an intermediary between potential clients and developers, offering valuable guidance and support during the entire buying journey of the customer.
+
+Key Responsibilities:
+• Contact potential customers via telephone, virtual meet or onsite to explain our new builder projects and persuade them to schedule an appointment on site or persuade them to make a purchase.
+• Attend qualified leads by meeting clients virtually, where you will present tailored made options and convince customers to come on site.
+• Facilitate negotiations between clients and builders, ensuring that both parties are satisfied with the terms of the deal.
+• The Client Advisor must maintain relationships with clients, ensuring that they are satisfied with the services provided and are likely to recommend NoBroker to others.
+• Promote and offer additional NoBroker services to customers, aiming to cross-sell and provide them with a comprehensive range of offerings that meet their needs.
+• Ensure all leads are nurtured and create a good quality strong sales pipeline/funnel for achieving daily, weekly and monthly targets.
+• Generate referrals and actively encourage customers to recommend our services to their friends, family, and acquaintances.
+• The Client Advisor must stay informed about changes and trends in the real estate market, including pricing, inventory, and demand.
+
+Pre-Requisites:
+• Minimum qualification required is a bachelor's degree or equivalent.
+• Proven track record of sales experience or a similar role in a sales environment.
+• Real estate experience is an added advantage.
+• Excellent communication and interpersonal skills.
+• Ability to convince, persuade, and handle objections effectively.
+• Knowledge of sales principles and techniques.
+• Good locality understanding.
+• Ability to work under a target driven role.
+• Should have a vehicle of his or her own.
+• Fluency in the local language and English.
+• Working Days: 6 days (Saturday and Sunday working).
+
+Competencies to check while interviewing for the Role:
+• Real Estate Knowledge
+• Communication skills including questioning and listening skills.
+• Networking and Relationship Building
+• Problem-Solving and Negotiation
+• Rapport Building skills
+• Convincing skills
+• Customer-oriented mindset`,
+    };
+
+    document.getElementById('jd-preset').addEventListener('change', function () {
+      const text = PRESET_JDS[this.value];
+      if (!text) return;
+      jdInput.value = text;
+      // Switch to text mode
+      jdTabText.classList.add('active');
+      jdTabFile.classList.remove('active');
+      jdTextPanel.style.display = 'block';
+      jdFilePanel.style.display = 'none';
     });
 
     /* ─────────────────────────────────────────────────────────────────── */
