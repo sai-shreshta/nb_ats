@@ -2948,12 +2948,13 @@ Competencies to check while interviewing for the Role:
       if (!lastResults.length) return;
 
       const escape = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-      const headers = ['applied_role', 'candidate_name', 'candidate_phone_number', 'candidate_email', 'resume_filename', 'overall_score', 'skills_score', 'experience_score', 'education_score', 'presentation_score', 'shortlisted', 'strengths', 'gaps', 'summary'];
+      const headers = ['applied_role', 'candidate_name', 'candidate_phone_number', 'candidate_email', 'city', 'resume_filename', 'overall_score', 'skills_score', 'experience_score', 'education_score', 'presentation_score', 'shortlisted', 'strengths', 'gaps', 'summary'];
       const rows = lastResults.map(r => [
         escape(r.job_role || ''),
         escape(r.candidate_name),
         escape(r.phone_number || ''),
         escape(r.email || ''),
+        escape(r.city || ''),
         escape(r.filename),
         r.overall_score,
         r.skills_score,
@@ -3064,12 +3065,13 @@ Competencies to check while interviewing for the Role:
         if (!res.ok) throw new Error(await res.text());
         const candidates = await res.json();
         const escape = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-        const headers = ['applied_role','candidate_name','candidate_phone_number','candidate_email','resume_filename','overall_score','skills_score','experience_score','education_score','presentation_score','shortlisted','strengths','gaps','summary'];
+        const headers = ['applied_role','candidate_name','candidate_phone_number','candidate_email','city','resume_filename','overall_score','skills_score','experience_score','education_score','presentation_score','shortlisted','strengths','gaps','summary'];
         const rows = candidates.map(r => [
           escape(r.applied_role || ''),
           escape(r.candidate_name || ''),
           escape(r.phone_number || ''),
           escape(r.email || ''),
+          escape(r.city || ''),
           escape(r.resume_filename || ''),
           r.overall_score || 0, r.skills_score || 0, r.experience_score || 0, r.education_score || 0, r.presentation_score || 0,
           r.shortlisted ? 'Yes' : 'No',
@@ -3289,12 +3291,13 @@ Competencies to check while interviewing for the Role:
     historyExportBtn.addEventListener('click', () => {
       if (!currentDetailCandidates.length) return;
       const escape = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-      const headers = ['applied_role','candidate_name','candidate_phone_number','candidate_email','resume_filename','overall_score','skills_score','experience_score','education_score','presentation_score','shortlisted','strengths','gaps','summary'];
+      const headers = ['applied_role','candidate_name','candidate_phone_number','candidate_email','city','resume_filename','overall_score','skills_score','experience_score','education_score','presentation_score','shortlisted','strengths','gaps','summary'];
       const rows = currentDetailCandidates.map(r => [
         escape(r.job_role || ''),
         escape(r.candidate_name),
         escape(r.phone_number || ''),
         escape(r.email || ''),
+        escape(r.city || ''),
         escape(r.resume_filename || ''),
         r.overall_score, r.skills_score, r.experience_score, r.education_score, r.presentation_score,
         r.shortlisted ? 'Yes' : 'No',
