@@ -342,6 +342,18 @@ async def admin_set_role(
     return JSONResponse({"ok": True})
 
 
+@app.delete("/api/history/{screening_id}")
+async def delete_screening(
+    screening_id: str,
+    authorization: str | None = Header(default=None),
+) -> JSONResponse:
+    _require_admin(authorization)
+    sb = _supabase()
+    sb.table("candidates").delete().eq("screening_id", screening_id).execute()
+    sb.table("screenings").delete().eq("id", screening_id).execute()
+    return JSONResponse({"ok": True})
+
+
 @app.get("/api/tracker")
 async def get_tracker(
     authorization: str | None = Header(default=None),
