@@ -341,6 +341,95 @@ async def admin_set_role(
     return JSONResponse({"ok": True})
 
 
+@app.get("/api/tracker")
+async def get_tracker(
+    authorization: str | None = Header(default=None),
+) -> JSONResponse:
+    _require_admin(authorization)
+    sb = _supabase()
+
+    screenings_res = sb.table("screenings").select("id, job_role, total_screened, total_shortlisted, recorded_by, created_at").execute()
+    screenings = screenings_res.data or []
+
+    candidates_res = sb.table("candidates").select("phone_number, email, overall_score, shortlisted").execute()
+    candidates = candidates_res.data or []
+
+    profiles_res = sb.table("profiles").select("email, full_name").execute()
+    name_map = {p["email"]: p.get("full_name", "") for p in (profiles_res.data or [])}
+
+    total_runs = len(screenings)
+    total_screened = sum(s.get("total_screened", 0) for s in screenings)
+    total_applications = len(candidates)
+    total_shortlisted = sum(1 for c in candidates if c.get("shortlisted"))
+
+    seen_phones: set = set()
+    seen_emails: set = set()
+    unique_count = 0
+    for c in candidates:
+        phone = (c.get("phone_number") or "").strip()
+        email = (c.get("email") or "").strip().lower()
+        if phone:
+            if phone not in seen_phones:
+                seen_phones.add(phone)
+                unique_count += 1
+        elif email:
+            if email not in seen_emails:
+                seen_emails.add(email)
+                unique_count += 1
+        else:
+            unique_count += 1
+
+    avg_score = round(sum(c.get("overall_score", 0) for c in candidates) / max(total_applications, 1), 1)
+    shortlist_rate = round(total_shortlisted / max(total_applications, 1) * 100, 1)
+
+    user_stats: dict = {}
+    for s in screenings:
+        key = s.get("recorded_by") or "unknown"
+        if key not in user_stats:
+            user_stats[key] = {
+                "recorded_by": key,
+                "full_name": name_map.get(key, ""),
+                "runs": 0, "screened": 0, "shortlisted": 0, "last_run": None,
+            }
+        user_stats[key]["runs"] += 1
+        user_stats[key]["screened"] += s.get("total_screened", 0)
+        user_stats[key]["shortlisted"] += s.get("total_shortlisted", 0)
+        run_date = s.get("created_at")
+        if run_date and (not user_stats[key]["last_run"] or run_date > user_stats[key]["last_run"]):
+            user_stats[key]["last_run"] = run_date
+
+    by_user = sorted(user_stats.values(), key=lambda x: x["runs"], reverse=True)
+    for u in by_user:
+        u["shortlist_rate"] = round(u["shortlisted"] / max(u["screened"], 1) * 100, 1)
+
+    role_stats: dict = {}
+    for s in screenings:
+        role = s.get("job_role") or "Unknown"
+        if role not in role_stats:
+            role_stats[role] = {"job_role": role, "runs": 0, "screened": 0, "shortlisted": 0}
+        role_stats[role]["runs"] += 1
+        role_stats[role]["screened"] += s.get("total_screened", 0)
+        role_stats[role]["shortlisted"] += s.get("total_shortlisted", 0)
+
+    by_role = sorted(role_stats.values(), key=lambda x: x["runs"], reverse=True)
+    for r in by_role:
+        r["shortlist_rate"] = round(r["shortlisted"] / max(r["screened"], 1) * 100, 1)
+
+    return JSONResponse({
+        "totals": {
+            "runs": total_runs,
+            "screened": total_screened,
+            "applications": total_applications,
+            "unique": unique_count,
+            "shortlisted": total_shortlisted,
+            "avg_score": avg_score,
+            "shortlist_rate": shortlist_rate,
+        },
+        "by_user": by_user,
+        "by_role": by_role,
+    })
+
+
 @app.post("/api/export/candidates")
 async def export_candidates(
     request: Request,
