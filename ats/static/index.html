@@ -1985,15 +1985,6 @@
 
     <!-- List view -->
     <div id="history-list-view" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
-      <div class="history-stats" id="history-stats" style="display:none;">
-        <div class="history-stat-card"><div class="history-stat-label">Total Runs</div><div class="history-stat-value blue" id="hs-runs">-</div></div>
-        <div class="history-stat-card"><div class="history-stat-label">Total Applications</div><div class="history-stat-value" id="hs-applications">-</div></div>
-        <div class="history-stat-card"><div class="history-stat-label">Unique Applicants</div><div class="history-stat-value" id="hs-unique">-</div></div>
-        <div class="history-stat-card"><div class="history-stat-label">Total Shortlisted</div><div class="history-stat-value green" id="hs-shortlisted">-</div></div>
-        <div class="history-stat-card"><div class="history-stat-label">Shortlist Rate</div><div class="history-stat-value green" id="hs-rate">-</div></div>
-        <div class="history-stat-card"><div class="history-stat-label">Avg Score</div><div class="history-stat-value" id="hs-avg">-</div></div>
-        <div class="history-stat-card"><div class="history-stat-label">Total Screened</div><div class="history-stat-value" id="hs-screened">-</div></div>
-      </div>
       <div class="history-header">
         <div class="history-header-text">
           <h2>Past Screenings</h2>
@@ -3428,15 +3419,13 @@ Competencies to check while interviewing for the Role:
 
     async function loadHistory() {
       screeningList.innerHTML = '<div style="padding:20px;color:var(--text-muted);font-size:13px;">Loading...</div>';
-      document.getElementById('history-stats').style.display = 'none';
 
-      let screenings, allCandidates;
+      let screenings;
       try {
         const res = await authFetch('/api/history');
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
         screenings = data.screenings;
-        allCandidates = data.candidates;
       } catch(e) {
         screeningList.innerHTML = '<div style="padding:20px;color:var(--red);font-size:13px;">Failed to load history.</div>';
         return;
@@ -3450,42 +3439,6 @@ Competencies to check while interviewing for the Role:
           </div>`;
         return;
       }
-
-      // ── Compute metrics ──────────────────────────────────────────────
-      const totalRuns = screenings.length;
-      const totalApplications = allCandidates.length;
-      const totalShortlisted = allCandidates.filter(c => c.shortlisted).length;
-      const shortlistRate = totalApplications > 0 ? ((totalShortlisted / totalApplications) * 100).toFixed(1) : '0.0';
-      const avgScore = totalApplications > 0
-        ? Math.round(allCandidates.reduce((s, c) => s + (c.overall_score || 0), 0) / totalApplications)
-        : 0;
-      const totalScreened = screenings.reduce((s, r) => s + r.total_screened, 0);
-
-      // Unique applicants: deduplicate by phone → then by email → rest unique
-      const seenPhones = new Set();
-      const seenEmails = new Set();
-      let uniqueCount = 0;
-      for (const c of allCandidates) {
-        const phone = (c.phone_number || '').trim();
-        const email = (c.email || '').trim().toLowerCase();
-        if (phone) {
-          if (!seenPhones.has(phone)) { seenPhones.add(phone); uniqueCount++; }
-        } else if (email) {
-          if (!seenEmails.has(email)) { seenEmails.add(email); uniqueCount++; }
-        } else {
-          uniqueCount++;
-        }
-      }
-
-      // ── Render stats ─────────────────────────────────────────────────
-      document.getElementById('hs-runs').textContent = totalRuns;
-      document.getElementById('hs-applications').textContent = totalApplications;
-      document.getElementById('hs-unique').textContent = uniqueCount;
-      document.getElementById('hs-shortlisted').textContent = totalShortlisted;
-      document.getElementById('hs-rate').textContent = `${shortlistRate}%`;
-      document.getElementById('hs-avg').textContent = `${avgScore}%`;
-      document.getElementById('hs-screened').textContent = totalScreened;
-      document.getElementById('history-stats').style.display = 'flex';
 
       // ── Render screening list ────────────────────────────────────────
       screeningList.innerHTML = '';

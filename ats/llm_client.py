@@ -50,6 +50,7 @@ Return ONLY a valid JSON object with this exact structure, no other text:
   "education_score": <integer 0-20>,
   "presentation_score": <integer 0-10>,
   "shortlisted": <true if overall_score >= 70, else false>,
+  "job_hopper": <true if candidate has MORE THAN 3 years total experience AND more than 3 employers where tenure was under 1 year, else false>,
   "strengths": ["strength 1", "strength 2", "strength 3"],
   "gaps": ["gap 1", "gap 2"],
   "summary": "2-3 sentence human readable summary of this candidate's fit"
@@ -57,9 +58,11 @@ Return ONLY a valid JSON object with this exact structure, no other text:
 
 For phone_number: extract the candidate's phone number and format it as +91XXXXXXXXXX (10 digits after +91, no space). If the number is written without country code and appears to be Indian (10 digits starting with 6-9), prepend +91. If no phone number is found, return empty string.
 
+For job_hopper: look at the candidate's work history. Count the number of employers where the listed tenure is less than 1 year (12 months). If the candidate has more than 3 years of total work experience AND more than 3 such short-tenure stints, set job_hopper to true. If total experience is 3 years or under, always set job_hopper to false regardless of tenure pattern.
+
 Scoring rubric:
 - skills_score (0-40): How well do the candidate's demonstrated skills match what the JD actually requires day-to-day? Required skills carry 3x more weight than preferred. Penalize if skills listed are generic soft skills with no supporting work evidence.
-- experience_score (0-30): How closely does the candidate's past work match the nature and context of this role? Consider whether the type of work (not just the job title or industry) aligns. Irrelevant experience — even in the same industry — should score low. Reward specificity and depth over breadth.
+- experience_score (0-30): How closely does the candidate's past work match the nature and context of this role? Consider whether the type of work (not just the job title or industry) aligns. Irrelevant experience — even in the same industry — should score low. Reward specificity and depth over breadth. For candidates with a clear job-hopping pattern (more than 3 short stints under 1 year across a career of more than 3 years), apply an additional penalty of 5-8 points to reflect instability and lack of depth.
 - education_score (0-20): Does education meet the role's requirements? Weight this appropriately — for roles that don't require specific degrees, don't over-penalize or over-reward based on field of study.
 - presentation_score (0-10): Clarity, structure, and professionalism of the resume. Penalize resumes that are thin, vague, have no dates, or pad space with filler content.
 - overall_score must equal skills_score + experience_score + education_score + presentation_score exactly.
@@ -92,6 +95,7 @@ def _error_result(filename: str, error: str) -> dict:
         "education_score": 0,
         "presentation_score": 0,
         "shortlisted": False,
+        "job_hopper": False,
         "strengths": [],
         "gaps": [],
         "summary": "",
@@ -181,7 +185,13 @@ async def score_resume(jd_text: str, resume_text: str, filename: str) -> dict:
                     + result.get("presentation_score", 0)
                 )
                 result["overall_score"] = computed
-                result["shortlisted"] = computed >= 70
+                # Job hoppers need a much stronger profile to be shortlisted.
+                # The LLM already penalises them in experience_score; here we
+                # additionally raise the shortlist bar so marginal candidates
+                # with this pattern don't slip through.
+                job_hopper = result.get("job_hopper", False)
+                shortlist_threshold = 82 if job_hopper else 70
+                result["shortlisted"] = computed >= shortlist_threshold
 
                 # Fall back to filename stem if name is missing/generic.
                 name = result.get("candidate_name", "").strip()
