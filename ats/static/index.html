@@ -1882,6 +1882,89 @@
       font-size: 13px;
     }
 
+    /* ── View CV button ─────────────────────────────────────────── */
+    .view-cv-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 11px;
+      background: none;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: border-color var(--transition), color var(--transition), background var(--transition);
+      margin-top: 10px;
+    }
+    .view-cv-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    /* ── CV Preview Modal ────────────────────────────────────────── */
+    #cv-preview-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: rgba(0, 0, 0, 0.65);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    #cv-preview-modal.visible { display: flex; }
+
+    .cv-modal-box {
+      background: var(--surface);
+      border-radius: 10px;
+      width: 100%;
+      max-width: 960px;
+      height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
+    }
+
+    .cv-modal-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      gap: 12px;
+    }
+
+    .cv-modal-title {
+      font-size: 14px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .cv-modal-close {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border);
+      background: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 14px;
+      flex-shrink: 0;
+      transition: border-color var(--transition), color var(--transition);
+    }
+    .cv-modal-close:hover { border-color: var(--red); color: var(--red); }
+
     /* ── Responsive ─────────────────────────────────────────────── */
     @media (max-width: 800px) {
       .app-body {
@@ -2363,6 +2446,17 @@
     </div>
   </div>
 
+  <!-- ── CV Preview Modal ──────────────────────────────────────── -->
+  <div id="cv-preview-modal">
+    <div class="cv-modal-box">
+      <div class="cv-modal-header">
+        <span class="cv-modal-title" id="cv-modal-name"></span>
+        <button class="cv-modal-close" id="cv-modal-close-btn">&#x2715;</button>
+      </div>
+      <iframe id="cv-modal-iframe" src="" style="flex:1;border:none;background:#f5f5f5;"></iframe>
+    </div>
+  </div>
+
   <div class="toast" id="toast">
     <span id="toast-msg"></span>
     <button class="toast-retry" id="toast-retry" style="display:none;">Retry</button>
@@ -2764,7 +2858,9 @@
           candidate_name: r.candidate_name || '',
           phone_number: r.phone_number || '',
           email: r.email || '',
+          city: r.city || '',
           resume_filename: r.filename || '',
+          resume_url: r.resume_url || '',
           overall_score: r.overall_score || 0,
           skills_score: r.skills_score || 0,
           experience_score: r.experience_score || 0,
@@ -3112,6 +3208,10 @@ Competencies to check while interviewing for the Role:
         if (!extractResp.ok) throw new Error(`Extract failed: ${extractResp.status}`);
         const extracted = await extractResp.json();
 
+        // Build filename → resume_url map from extract results
+        const resumeUrlMap = {};
+        extracted.forEach(e => { if (e.resume_url) resumeUrlMap[e.filename] = e.resume_url; });
+
         // Step 2: score each resume against the JD in parallel batches
         const results = [];
         let completed = 0;
@@ -3123,7 +3223,7 @@ Competencies to check while interviewing for the Role:
           const batchResults = await Promise.all(batch.map(async ({ filename, resume_text, error }) => {
             if (error || !resume_text) {
               const stem = filename ? filename.split('.').slice(0, -1).join('.') || filename : 'Unknown';
-              return { candidate_name: stem, filename: filename || 'unknown', overall_score: 0, skills_score: 0, experience_score: 0, education_score: 0, presentation_score: 0, shortlisted: false, strengths: [], gaps: [], summary: 'Could not extract text from this file.', error: error || 'No text extracted' };
+              return { candidate_name: stem, filename: filename || 'unknown', resume_url: resumeUrlMap[filename] || '', overall_score: 0, skills_score: 0, experience_score: 0, education_score: 0, presentation_score: 0, shortlisted: false, strengths: [], gaps: [], summary: 'Could not extract text from this file.', error: error || 'No text extracted' };
             }
             const scoreForm = new FormData();
             scoreForm.append('jd', jd);
@@ -3131,7 +3231,9 @@ Competencies to check while interviewing for the Role:
             scoreForm.append('resume_text', resume_text);
             const scoreResp = await authFetch('/api/score', { method: 'POST', body: scoreForm });
             if (!scoreResp.ok) throw new Error(`Score failed for ${filename}: ${scoreResp.status}`);
-            return await scoreResp.json();
+            const scored = await scoreResp.json();
+            scored.resume_url = resumeUrlMap[filename] || '';
+            return scored;
           }));
 
           results.push(...batchResults);
@@ -3254,7 +3356,16 @@ Competencies to check while interviewing for the Role:
             </div>
           </div>
           <div class="card-summary">${candidate.summary}</div>
+          ${candidate.resume_url ? `<button class="view-cv-btn" data-cv-url="${candidate.resume_url}" data-cv-name="${candidate.candidate_name.replace(/"/g, '&quot;')}">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            View CV
+          </button>` : ''}
         `;
+        if (candidate.resume_url) {
+          card.querySelector('.view-cv-btn').addEventListener('click', () => {
+            openCVPreview(candidate.resume_url, candidate.candidate_name);
+          });
+        }
         cardsContainer.appendChild(card);
       });
     }
@@ -3266,7 +3377,7 @@ Competencies to check while interviewing for the Role:
       if (!lastResults.length) return;
 
       const escape = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-      const headers = ['applied_role', 'candidate_name', 'candidate_phone_number', 'candidate_email', 'city', 'resume_filename', 'overall_score', 'skills_score', 'experience_score', 'education_score', 'presentation_score', 'shortlisted', 'strengths', 'gaps', 'summary'];
+      const headers = ['applied_role', 'candidate_name', 'candidate_phone_number', 'candidate_email', 'city', 'resume_filename', 'cv_link', 'overall_score', 'skills_score', 'experience_score', 'education_score', 'presentation_score', 'shortlisted', 'strengths', 'gaps', 'summary'];
       const rows = lastResults.map(r => [
         escape(r.job_role || ''),
         escape(r.candidate_name),
@@ -3274,6 +3385,7 @@ Competencies to check while interviewing for the Role:
         escape(r.email || ''),
         escape(r.city || ''),
         escape(r.filename),
+        escape(r.resume_url || ''),
         r.overall_score,
         r.skills_score,
         r.experience_score,
@@ -3383,7 +3495,7 @@ Competencies to check while interviewing for the Role:
         if (!res.ok) throw new Error(await res.text());
         const candidates = await res.json();
         const escape = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-        const headers = ['applied_role','candidate_name','candidate_phone_number','candidate_email','city','resume_filename','overall_score','skills_score','experience_score','education_score','presentation_score','shortlisted','strengths','gaps','summary'];
+        const headers = ['applied_role','candidate_name','candidate_phone_number','candidate_email','city','resume_filename','cv_link','overall_score','skills_score','experience_score','education_score','presentation_score','shortlisted','strengths','gaps','summary'];
         const rows = candidates.map(r => [
           escape(r.applied_role || ''),
           escape(r.candidate_name || ''),
@@ -3391,6 +3503,7 @@ Competencies to check while interviewing for the Role:
           escape(r.email || ''),
           escape(r.city || ''),
           escape(r.resume_filename || ''),
+          escape(r.resume_url || ''),
           r.overall_score || 0, r.skills_score || 0, r.experience_score || 0, r.education_score || 0, r.presentation_score || 0,
           r.shortlisted ? 'Yes' : 'No',
           escape((r.strengths || []).join('; ')),
@@ -3529,54 +3642,47 @@ Competencies to check while interviewing for the Role:
       currentDetailCandidates = data.map(c => ({
         ...c,
         filename: c.resume_filename,
-        phone_number: c.phone_number,
-        email: c.email,
         job_role: screening.job_role,
       }));
 
       historyCards.innerHTML = '';
-      const mapped = data.map(c => ({
-        candidate_name: c.candidate_name,
-        filename: c.resume_filename,
-        overall_score: c.overall_score,
-        skills_score: c.skills_score,
-        experience_score: c.experience_score,
-        education_score: c.education_score,
-        presentation_score: c.presentation_score,
-        shortlisted: c.shortlisted,
-        strengths: c.strengths || [],
-        gaps: c.gaps || [],
-        summary: c.summary,
-      }));
 
-      const tempContainer = { innerHTML: '' };
-      mapped.forEach(candidate => {
-        const scoreClass = candidate.overall_score >= 70 ? 'score-green' : candidate.overall_score >= 50 ? 'score-yellow' : 'score-red';
+      data.forEach(c => {
+        const scoreClass = c.overall_score >= 70 ? 'score-green' : c.overall_score >= 50 ? 'score-yellow' : 'score-red';
         const card = document.createElement('div');
         card.className = 'candidate-card';
         card.innerHTML = `
           <div class="card-header">
             <div class="card-identity">
-              <div class="candidate-name">${candidate.candidate_name}</div>
-              <div class="candidate-file">${candidate.filename}</div>
+              <div class="candidate-name">${c.candidate_name}</div>
+              <div class="candidate-file">${c.resume_filename}</div>
             </div>
             <div class="card-badges">
-              <div class="score-badge ${scoreClass}">${candidate.overall_score}<small>/ 100</small></div>
-              ${candidate.shortlisted ? '<div class="shortlisted-chip"><span>✓</span> Shortlisted</div>' : ''}
+              <div class="score-badge ${scoreClass}">${c.overall_score}<small>/ 100</small></div>
+              ${c.shortlisted ? '<div class="shortlisted-chip"><span>✓</span> Shortlisted</div>' : ''}
             </div>
           </div>
           <div class="score-bars">
-            <div class="score-bar-row"><div class="bar-label">Skills</div><div class="bar-track"><div class="bar-fill skills" style="width:${candidate.skills_score}%"></div></div><div class="bar-score">${candidate.skills_score}</div></div>
-            <div class="score-bar-row"><div class="bar-label">Experience</div><div class="bar-track"><div class="bar-fill experience" style="width:${candidate.experience_score}%"></div></div><div class="bar-score">${candidate.experience_score}</div></div>
-            <div class="score-bar-row"><div class="bar-label">Education</div><div class="bar-track"><div class="bar-fill education" style="width:${candidate.education_score}%"></div></div><div class="bar-score">${candidate.education_score}</div></div>
-            <div class="score-bar-row"><div class="bar-label">Presentation</div><div class="bar-track"><div class="bar-fill presentation" style="width:${candidate.presentation_score}%"></div></div><div class="bar-score">${candidate.presentation_score}</div></div>
+            <div class="score-bar-row"><div class="bar-label">Skills</div><div class="bar-track"><div class="bar-fill skills" style="width:${c.skills_score}%"></div></div><div class="bar-score">${c.skills_score}</div></div>
+            <div class="score-bar-row"><div class="bar-label">Experience</div><div class="bar-track"><div class="bar-fill experience" style="width:${c.experience_score}%"></div></div><div class="bar-score">${c.experience_score}</div></div>
+            <div class="score-bar-row"><div class="bar-label">Education</div><div class="bar-track"><div class="bar-fill education" style="width:${c.education_score}%"></div></div><div class="bar-score">${c.education_score}</div></div>
+            <div class="score-bar-row"><div class="bar-label">Presentation</div><div class="bar-track"><div class="bar-fill presentation" style="width:${c.presentation_score}%"></div></div><div class="bar-score">${c.presentation_score}</div></div>
           </div>
           <div class="card-lists">
-            <div class="list-box"><div class="list-box-title green">✓ Strengths</div>${(candidate.strengths||[]).map(s=>`<div class="list-item"><span class="dot green"></span><span>${s}</span></div>`).join('')}</div>
-            <div class="list-box"><div class="list-box-title red">✗ Gaps</div>${(candidate.gaps||[]).map(g=>`<div class="list-item"><span class="dot red"></span><span>${g}</span></div>`).join('')}</div>
+            <div class="list-box"><div class="list-box-title green">✓ Strengths</div>${(c.strengths||[]).map(s=>`<div class="list-item"><span class="dot green"></span><span>${s}</span></div>`).join('')}</div>
+            <div class="list-box"><div class="list-box-title red">✗ Gaps</div>${(c.gaps||[]).map(g=>`<div class="list-item"><span class="dot red"></span><span>${g}</span></div>`).join('')}</div>
           </div>
-          <div class="card-summary">${candidate.summary}</div>
+          <div class="card-summary">${c.summary}</div>
+          ${c.resume_url ? `<button class="view-cv-btn" data-cv-url="${c.resume_url}" data-cv-name="${c.candidate_name.replace(/"/g, '&quot;')}">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            View CV
+          </button>` : ''}
         `;
+        if (c.resume_url) {
+          card.querySelector('.view-cv-btn').addEventListener('click', () => {
+            openCVPreview(c.resume_url, c.candidate_name);
+          });
+        }
         historyCards.appendChild(card);
       });
     }
@@ -3588,10 +3694,34 @@ Competencies to check while interviewing for the Role:
       currentDetailCandidates = [];
     });
 
+    /* ── CV Preview Modal ──────────────────────────────────────────── */
+    function openCVPreview(url, name) {
+      const isDocx = /\.docx$/i.test(url);
+      const src = isDocx
+        ? `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`
+        : url;
+      document.getElementById('cv-modal-name').textContent = name || 'CV Preview';
+      document.getElementById('cv-modal-iframe').src = src;
+      document.getElementById('cv-preview-modal').classList.add('visible');
+    }
+
+    function closeCVPreview() {
+      document.getElementById('cv-preview-modal').classList.remove('visible');
+      document.getElementById('cv-modal-iframe').src = '';
+    }
+
+    document.getElementById('cv-modal-close-btn').addEventListener('click', closeCVPreview);
+    document.getElementById('cv-preview-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeCVPreview();
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeCVPreview();
+    });
+
     historyExportBtn.addEventListener('click', () => {
       if (!currentDetailCandidates.length) return;
       const escape = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-      const headers = ['applied_role','candidate_name','candidate_phone_number','candidate_email','city','resume_filename','overall_score','skills_score','experience_score','education_score','presentation_score','shortlisted','strengths','gaps','summary'];
+      const headers = ['applied_role','candidate_name','candidate_phone_number','candidate_email','city','resume_filename','cv_link','overall_score','skills_score','experience_score','education_score','presentation_score','shortlisted','strengths','gaps','summary'];
       const rows = currentDetailCandidates.map(r => [
         escape(r.job_role || ''),
         escape(r.candidate_name),
@@ -3599,6 +3729,7 @@ Competencies to check while interviewing for the Role:
         escape(r.email || ''),
         escape(r.city || ''),
         escape(r.resume_filename || ''),
+        escape(r.resume_url || ''),
         r.overall_score, r.skills_score, r.experience_score, r.education_score, r.presentation_score,
         r.shortlisted ? 'Yes' : 'No',
         escape((r.strengths||[]).join('; ')),

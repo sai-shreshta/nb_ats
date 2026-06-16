@@ -1,9 +1,9 @@
 """
 main.py — FastAPI ATS application, Vercel-compatible.
 """
-# redeploy
 import asyncio
 import os
+import uuid
 from datetime import datetime, timezone
 from typing import List
 
@@ -201,21 +201,44 @@ async def me(authorization: str | None = Header(default=None)) -> JSONResponse:
 
 # ── Core ATS endpoints (require approved user) ────────────────────────────────
 
+def _upload_resume_to_storage(sb, file_bytes: bytes, filename: str) -> str:
+    """Upload resume bytes to Supabase Storage. Returns public URL or empty string on failure."""
+    try:
+        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "bin"
+        content_type = (
+            "application/pdf"
+            if ext == "pdf"
+            else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+        storage_path = f"{uuid.uuid4()}.{ext}"
+        sb.storage.from_("resumes").upload(
+            storage_path,
+            file_bytes,
+            {"content-type": content_type},
+        )
+        supabase_url = os.getenv("SUPABASE_URL", "")
+        return f"{supabase_url}/storage/v1/object/public/resumes/{storage_path}"
+    except Exception:
+        return ""
+
+
 @app.post("/api/extract")
 async def extract_resumes(
     files: List[UploadFile] = File(...),
     authorization: str | None = Header(default=None),
 ) -> JSONResponse:
     _require_approved(authorization)
+    sb = _supabase()
 
     async def _one(upload: UploadFile) -> dict:
         filename = upload.filename or "unknown_file"
         file_bytes = await upload.read()
+        resume_url = await asyncio.to_thread(_upload_resume_to_storage, sb, file_bytes, filename)
         try:
             text = await asyncio.to_thread(extract_text, file_bytes, filename)
-            return {"filename": filename, "resume_text": text}
+            return {"filename": filename, "resume_text": text, "resume_url": resume_url}
         except ValueError as e:
-            return {"filename": filename, "resume_text": None, "error": str(e)}
+            return {"filename": filename, "resume_text": None, "resume_url": resume_url, "error": str(e)}
 
     results = await asyncio.gather(*[_one(f) for f in files])
     return JSONResponse(list(results))
