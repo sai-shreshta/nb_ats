@@ -2467,20 +2467,53 @@
 
   <script>
     /* ── Auth state & helpers ──────────────────────────────────────── */
-    let authState = null; // { access_token, email, full_name, role }
+    let authState = null; // { access_token, refresh_token, email, full_name, role }
 
-    function authFetch(url, options = {}) {
-      const headers = { ...(options.headers || {}) };
-      if (authState?.access_token) headers['Authorization'] = `Bearer ${authState.access_token}`;
-      return fetch(url, { ...options, headers }).then(res => {
-        if (res.status === 401) { logout(); throw new Error('Session expired.'); }
-        return res;
-      });
+    // Escape untrusted text (LLM output, filenames, user names) before
+    // interpolating it into innerHTML.
+    function esc(v) {
+      return String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    function saveAuth() {
+      try { localStorage.setItem('ats_auth', JSON.stringify(authState)); } catch {}
+    }
+
+    let _refreshing = null;
+    function refreshSession() {
+      if (!authState?.refresh_token) return Promise.resolve(false);
+      if (!_refreshing) {
+        _refreshing = fetch('/api/auth/refresh', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: authState.refresh_token }),
+        }).then(async res => {
+          if (!res.ok) return false;
+          const data = await res.json();
+          authState = { ...authState, access_token: data.access_token, refresh_token: data.refresh_token };
+          saveAuth();
+          return true;
+        }).catch(() => false).finally(() => { _refreshing = null; });
+      }
+      return _refreshing;
+    }
+
+    // Access tokens expire after ~1h; refresh once on 401 before giving up,
+    // so a long screening run doesn't log the user out halfway.
+    async function authFetch(url, options = {}) {
+      const send = () => {
+        const headers = { ...(options.headers || {}) };
+        if (authState?.access_token) headers['Authorization'] = `Bearer ${authState.access_token}`;
+        return fetch(url, { ...options, headers });
+      };
+      let res = await send();
+      if (res.status === 401 && await refreshSession()) res = await send();
+      if (res.status === 401) { logout(); throw new Error('Session expired.'); }
+      return res;
     }
 
     function logout() {
       authState = null;
-      localStorage.removeItem('ats_auth');
+      try { localStorage.removeItem('ats_auth'); } catch {}
       showAuthScreen();
     }
 
@@ -2501,31 +2534,31 @@
       document.getElementById('pending-screen').style.display = 'none';
       document.getElementById('main-app').style.display = 'flex';
       // Populate header
+      const isAdmin = authState.role === 'admin';
       document.getElementById('header-user-name').textContent = authState.full_name || authState.email;
       const badge = document.getElementById('header-role-badge');
-      badge.textContent = authState.role === 'admin' ? 'Admin' : 'User';
-      badge.className = `header-role-badge ${authState.role === 'admin' ? 'admin' : 'user'}`;
-      // Show admin-only nav tabs
-      if (authState.role === 'admin') {
-        document.getElementById('nav-tracker').style.display = '';
-        document.getElementById('nav-admin').style.display = '';
-      }
+      badge.textContent = isAdmin ? 'Admin' : 'User';
+      badge.className = `header-role-badge ${isAdmin ? 'admin' : 'user'}`;
+      // Admin-only nav tabs (hide again if a non-admin logs in after an admin)
+      document.getElementById('nav-tracker').style.display = isAdmin ? '' : 'none';
+      document.getElementById('nav-admin').style.display = isAdmin ? '' : 'none';
     }
 
     async function initAuth() {
-      const stored = JSON.parse(localStorage.getItem('ats_auth') || 'null');
+      let stored = null;
+      try { stored = JSON.parse(localStorage.getItem('ats_auth') || 'null'); } catch {}
       if (!stored?.access_token) { showAuthScreen(); return; }
+      authState = stored;
       try {
-        const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${stored.access_token}` } });
+        const res = await authFetch('/api/auth/me');
         if (!res.ok) throw new Error();
         const user = await res.json();
-        if (!user.approved) { showPendingScreen(); return; }
-        authState = { ...stored, role: user.role, full_name: user.full_name };
-        localStorage.setItem('ats_auth', JSON.stringify(authState));
+        if (!user.approved) { authState = null; showPendingScreen(); return; }
+        authState = { ...authState, role: user.role, full_name: user.full_name };
+        saveAuth();
         showMainApp();
       } catch {
-        localStorage.removeItem('ats_auth');
-        showAuthScreen();
+        logout();
       }
     }
 
@@ -2563,8 +2596,8 @@
         const data = await res.json();
         if (!res.ok) { showMsg(msg, 'error', data.detail || 'Login failed.'); return; }
         if (data.status === 'pending') { showPendingScreen(); return; }
-        authState = { access_token: data.access_token, email: data.email, full_name: data.full_name, role: data.role };
-        localStorage.setItem('ats_auth', JSON.stringify(authState));
+        authState = { access_token: data.access_token, refresh_token: data.refresh_token, email: data.email, full_name: data.full_name, role: data.role };
+        saveAuth();
         showMainApp();
       } catch { showMsg(msg, 'error', 'Network error. Please try again.'); }
       finally { btn.disabled = false; btn.textContent = 'Login'; }
@@ -2669,8 +2702,8 @@
           const rateCls = u.shortlist_rate >= 30 ? 'good' : u.shortlist_rate >= 15 ? 'mid' : 'low';
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td style="font-weight:600;">${u.full_name || '—'}</td>
-            <td style="color:var(--text-secondary);font-size:12px;">${u.recorded_by}</td>
+            <td style="font-weight:600;">${esc(u.full_name || '—')}</td>
+            <td style="color:var(--text-secondary);font-size:12px;">${esc(u.recorded_by)}</td>
             <td style="text-align:right;" class="tracker-num">${u.runs}</td>
             <td style="text-align:right;" class="tracker-num">${u.screened.toLocaleString()}</td>
             <td style="text-align:right;" class="tracker-num">${u.shortlisted.toLocaleString()}</td>
@@ -2693,7 +2726,7 @@
           const rateCls = r.shortlist_rate >= 30 ? 'good' : r.shortlist_rate >= 15 ? 'mid' : 'low';
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td style="font-weight:600;">${r.job_role}</td>
+            <td style="font-weight:600;">${esc(r.job_role)}</td>
             <td style="text-align:right;" class="tracker-num">${r.runs}</td>
             <td style="text-align:right;" class="tracker-num">${r.screened.toLocaleString()}</td>
             <td style="text-align:right;" class="tracker-num">${r.shortlisted.toLocaleString()}</td>
@@ -2744,8 +2777,8 @@
           const tr = document.createElement('tr');
           const reqDate = u.requested_at ? new Date(u.requested_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '-';
           tr.innerHTML = `
-            <td style="font-weight:600;">${u.full_name || '-'}</td>
-            <td style="color:var(--text-secondary);">${u.email}</td>
+            <td style="font-weight:600;">${esc(u.full_name || '-')}</td>
+            <td style="color:var(--text-secondary);">${esc(u.email)}</td>
             <td style="color:var(--text-muted);font-size:12px;">${reqDate}</td>
             <td>
               <button class="admin-action-btn approve" onclick="adminApprove('${u.id}')">Approve</button>
@@ -2772,12 +2805,12 @@
           const approvedBy = u.approved_by || '-';
           const isCurrentUser = u.email === authState?.email;
           tr.innerHTML = `
-            <td style="font-weight:600;">${u.full_name || '-'}</td>
-            <td style="color:var(--text-secondary);">${u.email}</td>
-            <td><span class="header-role-badge ${u.role === 'admin' ? 'admin' : 'user'}" style="font-size:10px;">${u.role}</span></td>
+            <td style="font-weight:600;">${esc(u.full_name || '-')}</td>
+            <td style="color:var(--text-secondary);">${esc(u.email)}</td>
+            <td><span class="header-role-badge ${u.role === 'admin' ? 'admin' : 'user'}" style="font-size:10px;">${esc(u.role)}</span></td>
             <td><span class="status-badge ${u.approved ? 'approved' : 'pending'}">${u.approved ? 'Active' : 'Pending'}</span></td>
             <td style="color:var(--text-muted);font-size:12px;">${reqDate}</td>
-            <td style="color:var(--text-muted);font-size:12px;">${approvedBy}</td>
+            <td style="color:var(--text-muted);font-size:12px;">${esc(approvedBy)}</td>
             <td>${isCurrentUser ? '<span style="color:var(--text-muted);font-size:11px;">You</span>' : `
               ${!u.approved ? `<button class="admin-action-btn approve" onclick="adminApprove('${u.id}')">Approve</button>` : `<button class="admin-action-btn revoke" onclick="adminRevoke('${u.id}')">Revoke</button>`}
               <button class="admin-action-btn role" onclick="adminToggleRole('${u.id}', '${u.role}')">${u.role === 'admin' ? 'Remove Admin' : 'Make Admin'}</button>
@@ -2789,30 +2822,39 @@
       }
     }
 
-    async function adminApprove(id) {
-      await authFetch(`/api/admin/users/${id}/approve`, { method: 'POST' });
+    async function adminAction(url, options) {
+      try {
+        const res = await authFetch(url, options);
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          alert(data.detail || `Action failed (${res.status}).`);
+        }
+      } catch (e) {
+        alert(e.message || 'Action failed.');
+      }
       loadAdminUsers();
     }
 
-    async function adminRevoke(id) {
+    function adminApprove(id) {
+      adminAction(`/api/admin/users/${id}/approve`, { method: 'POST' });
+    }
+
+    function adminRevoke(id) {
       if (!confirm('Revoke access for this user?')) return;
-      await authFetch(`/api/admin/users/${id}/revoke`, { method: 'POST' });
-      loadAdminUsers();
+      adminAction(`/api/admin/users/${id}/revoke`, { method: 'POST' });
     }
 
-    async function adminDelete(id) {
+    function adminDelete(id) {
       if (!confirm('Permanently delete this user? This cannot be undone.')) return;
-      await authFetch(`/api/admin/users/${id}`, { method: 'DELETE' });
-      loadAdminUsers();
+      adminAction(`/api/admin/users/${id}`, { method: 'DELETE' });
     }
 
-    async function adminToggleRole(id, currentRole) {
+    function adminToggleRole(id, currentRole) {
       const newRole = currentRole === 'admin' ? 'user' : 'admin';
-      await authFetch(`/api/admin/users/${id}/role`, {
+      adminAction(`/api/admin/users/${id}/role`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: newRole }),
       });
-      loadAdminUsers();
     }
 
     /* ── Reset overlay views when switching back ───────────────────── */
@@ -2860,6 +2902,7 @@
           email: r.email || '',
           city: r.city || '',
           resume_filename: r.filename || '',
+          resume_path: r.resume_path || '',
           resume_url: r.resume_url || '',
           overall_score: r.overall_score || 0,
           skills_score: r.skills_score || 0,
@@ -2968,16 +3011,17 @@
     let selectedFiles = new DataTransfer();
     let lastResults = [];
 
-    function handleResumeSelection() {
-      const files = fileInput.files || folderInput.files || [];
-      if (files.length > 0) {
-        selectedFiles = new DataTransfer();
-        for (let file of files) {
-          if (file.name.endsWith('.pdf') || file.name.endsWith('.docx')) {
-            selectedFiles.items.add(file);
-          }
-        }
-      }
+    const isResumeFile = f => /\.(pdf|docx)$/i.test(f.name);
+
+    function handleResumeSelection(e) {
+      // Each input has its own FileList; read the one that changed.
+      const picked = [...(e.target.files || [])];
+      e.target.value = ''; // allow re-selecting the same files later
+      if (picked.length === 0) return;
+      const files = picked.filter(isResumeFile);
+      if (files.length === 0) showToast('error', 'No .pdf or .docx files in that selection.');
+      selectedFiles = new DataTransfer();
+      files.forEach(f => selectedFiles.items.add(f));
       updateFileList();
       updateScreenBtn();
     }
@@ -2998,8 +3042,8 @@
         const pill = document.createElement('div');
         pill.className = 'file-pill';
         pill.innerHTML = `
-          <span class="ext">${ext}</span>
-          <span class="name">${file.name}</span>
+          <span class="ext">${esc(ext)}</span>
+          <span class="name">${esc(file.name)}</span>
         `;
         fileList.appendChild(pill);
       }
@@ -3133,25 +3177,29 @@ Competencies to check while interviewing for the Role:
     /* ─────────────────────────────────────────────────────────────────── */
     async function handleJDFile(file) {
       jdFileSelected.innerHTML = `
-        <span class="ext">${file.name.split('.').pop().toUpperCase()}</span>
-        <span>${file.name} - extracting...</span>
+        <span class="ext">${esc(file.name.split('.').pop().toUpperCase())}</span>
+        <span>${esc(file.name)} - extracting...</span>
       `;
       jdFileSelected.style.display = 'flex';
+      const label = jdFileSelected.querySelector('span:last-child');
 
       const form = new FormData();
       form.append('files', file);
+      form.append('store', 'false');
       try {
         const resp = await authFetch('/api/extract', { method: 'POST', body: form });
+        if (!resp.ok) throw new Error();
         const [result] = await resp.json();
-        if (result.resume_text) {
+        if (result?.resume_text) {
           jdInput.value = result.resume_text;
-          jdFileSelected.querySelector('span:last-child').textContent = file.name;
+          label.textContent = file.name;
         } else {
-          jdFileSelected.querySelector('span:last-child').textContent = `${file.name} - failed to extract`;
+          label.textContent = `${file.name} - failed to extract`;
         }
       } catch {
-        jdFileSelected.querySelector('span:last-child').textContent = `${file.name} - extraction error`;
+        label.textContent = `${file.name} - extraction error`;
       }
+      jdFileInput.value = '';
       updateScreenBtn();
     }
 
@@ -3171,7 +3219,7 @@ Competencies to check while interviewing for the Role:
 
     setupDragDrop(dropZone, dropFileInput, () => {
       for (let file of dropFileInput.files) {
-        selectedFiles.items.add(file);
+        if (isResumeFile(file)) selectedFiles.items.add(file);
       }
       updateFileList();
       updateScreenBtn();
@@ -3185,6 +3233,35 @@ Competencies to check while interviewing for the Role:
     /* ─────────────────────────────────────────────────────────────────── */
     /* Screen Button                                                       */
     /* ─────────────────────────────────────────────────────────────────── */
+    // Vercel rejects request bodies over 4.5 MB, so upload in small batches.
+    const EXTRACT_BATCH_BYTES = 3.5 * 1024 * 1024;
+    const EXTRACT_BATCH_FILES = 10;
+
+    function chunkFiles(files) {
+      const chunks = [];
+      let current = [], size = 0;
+      for (const f of files) {
+        if (current.length && (size + f.size > EXTRACT_BATCH_BYTES || current.length >= EXTRACT_BATCH_FILES)) {
+          chunks.push(current);
+          current = []; size = 0;
+        }
+        current.push(f);
+        size += f.size;
+      }
+      if (current.length) chunks.push(current);
+      return chunks;
+    }
+
+    function failedResult(filename, error, extra = {}) {
+      const name = filename || 'unknown';
+      const stem = name.includes('.') ? name.split('.').slice(0, -1).join('.') : name;
+      return {
+        candidate_name: stem, filename: name, resume_url: '', resume_path: '',
+        overall_score: 0, skills_score: 0, experience_score: 0, education_score: 0, presentation_score: 0,
+        shortlisted: false, strengths: [], gaps: [], summary: '', error, ...extra,
+      };
+    }
+
     screenBtn.addEventListener('click', async () => {
       const jd = jdInput.value.trim();
       const files = [...selectedFiles.files];
@@ -3197,20 +3274,25 @@ Competencies to check while interviewing for the Role:
       screenBtn.disabled = true;
       progressBar.classList.add('visible');
       progressFill.style.width = '0%';
-      progressMsg.textContent = 'Extracting resume text...';
+      progressMsg.textContent = `Uploading 0 / ${files.length} resumes...`;
 
       try {
-        // Step 1: extract text from all resume files
-        const extractForm = new FormData();
-        for (let file of files) extractForm.append('files', file);
-
-        const extractResp = await authFetch('/api/extract', { method: 'POST', body: extractForm });
-        if (!extractResp.ok) throw new Error(`Extract failed: ${extractResp.status}`);
-        const extracted = await extractResp.json();
-
-        // Build filename → resume_url map from extract results
-        const resumeUrlMap = {};
-        extracted.forEach(e => { if (e.resume_url) resumeUrlMap[e.filename] = e.resume_url; });
+        // Step 1: upload + extract text, in batches
+        const extracted = [];
+        for (const chunk of chunkFiles(files)) {
+          const form = new FormData();
+          chunk.forEach(f => form.append('files', f));
+          try {
+            const resp = await authFetch('/api/extract', { method: 'POST', body: form });
+            if (!resp.ok) throw new Error(resp.status === 413 ? 'File too large to upload (max ~4 MB)' : `Upload failed (${resp.status})`);
+            extracted.push(...await resp.json());
+          } catch (err) {
+            if (!authState) throw err; // session ended; logout() already ran
+            chunk.forEach(f => extracted.push({ filename: f.name, resume_text: null, error: err.message }));
+          }
+          progressFill.style.width = `${Math.round(extracted.length / files.length * 30)}%`;
+          progressMsg.textContent = `Uploading ${extracted.length} / ${files.length} resumes...`;
+        }
 
         // Step 2: score each resume against the JD in parallel batches
         const results = [];
@@ -3220,29 +3302,34 @@ Competencies to check while interviewing for the Role:
 
         for (let i = 0; i < extracted.length; i += BATCH_SIZE) {
           const batch = extracted.slice(i, i + BATCH_SIZE);
-          const batchResults = await Promise.all(batch.map(async ({ filename, resume_text, error }) => {
+          const batchResults = await Promise.all(batch.map(async ({ filename, resume_text, error, resume_url = '', resume_path = '' }) => {
             if (error || !resume_text) {
-              const stem = filename ? filename.split('.').slice(0, -1).join('.') || filename : 'Unknown';
-              return { candidate_name: stem, filename: filename || 'unknown', resume_url: resumeUrlMap[filename] || '', overall_score: 0, skills_score: 0, experience_score: 0, education_score: 0, presentation_score: 0, shortlisted: false, strengths: [], gaps: [], summary: 'Could not extract text from this file.', error: error || 'No text extracted' };
+              return failedResult(filename, error || 'No text extracted', { resume_url, resume_path, summary: 'Could not extract text from this file.' });
             }
-            const scoreForm = new FormData();
-            scoreForm.append('jd', jd);
-            scoreForm.append('filename', filename);
-            scoreForm.append('resume_text', resume_text);
-            const scoreResp = await authFetch('/api/score', { method: 'POST', body: scoreForm });
-            if (!scoreResp.ok) throw new Error(`Score failed for ${filename}: ${scoreResp.status}`);
-            const scored = await scoreResp.json();
-            scored.resume_url = resumeUrlMap[filename] || '';
-            return scored;
+            try {
+              const scoreForm = new FormData();
+              scoreForm.append('jd', jd);
+              scoreForm.append('filename', filename);
+              scoreForm.append('resume_text', resume_text);
+              const scoreResp = await authFetch('/api/score', { method: 'POST', body: scoreForm });
+              if (!scoreResp.ok) throw new Error(`Scoring failed (${scoreResp.status})`);
+              const scored = await scoreResp.json();
+              return { ...scored, resume_url, resume_path };
+            } catch (err) {
+              if (!authState) throw err;
+              // One failed resume shouldn't sink the whole run.
+              return failedResult(filename, err.message, { resume_url, resume_path });
+            }
           }));
 
           results.push(...batchResults);
           completed += batchResults.length;
-          const pct = Math.round((completed / extracted.length) * 90) + 5;
+          const pct = Math.round((completed / extracted.length) * 65) + 30;
           progressFill.style.width = `${pct}%`;
           progressMsg.textContent = `Scoring ${completed} / ${extracted.length} resumes...`;
         }
 
+        results.sort((a, b) => (b.overall_score || 0) - (a.overall_score || 0));
         lastResults = results;
         displayResults(results);
         saveScreening(jd, results);
@@ -3256,9 +3343,10 @@ Competencies to check while interviewing for the Role:
       } catch (error) {
         console.error('Error:', error);
         progressMsg.textContent = 'Error processing resumes';
+        if (authState) showToast('error', `⚠ ${error.message || 'Error processing resumes'}`);
         setTimeout(() => {
           progressBar.classList.remove('visible');
-          screenBtn.disabled = false;
+          updateScreenBtn();
         }, 2000);
       }
     });
@@ -3266,12 +3354,27 @@ Competencies to check while interviewing for the Role:
     /* ─────────────────────────────────────────────────────────────────── */
     /* Display Results                                                     */
     /* ─────────────────────────────────────────────────────────────────── */
+    let activeTab = 'shortlisted';
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeTab = btn.getAttribute('data-tab');
+        renderActiveTab();
+      });
+    });
+
+    function renderActiveTab() {
+      tabBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === activeTab));
+      cardsContainer.innerHTML = '';
+      renderCards(activeTab === 'shortlisted' ? lastResults.filter(r => r.shortlisted) : lastResults);
+    }
+
     function displayResults(results) {
       summaryBar.style.display = 'flex';
       tabsRow.style.display = 'flex';
 
       const shortlisted = results.filter(r => r.shortlisted);
-      const avgScore = results.length > 0 ? Math.round(results.reduce((sum, r) => sum + r.overall_score, 0) / results.length) : 0;
+      const avgScore = results.length > 0 ? Math.round(results.reduce((sum, r) => sum + (r.overall_score || 0), 0) / results.length) : 0;
 
       statTotal.textContent = results.length;
       statPassed.textContent = shortlisted.length;
@@ -3280,19 +3383,67 @@ Competencies to check while interviewing for the Role:
       pillShortlisted.querySelector('.count-pill').textContent = shortlisted.length;
       pillAll.querySelector('.count-pill').textContent = results.length;
 
-      cardsContainer.innerHTML = '';
-      renderCards(results.filter(r => r.shortlisted));
+      activeTab = 'shortlisted';
+      renderActiveTab();
       exportBtn.disabled = false;
+    }
 
-      tabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-          tabBtns.forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          const tab = btn.getAttribute('data-tab');
-          cardsContainer.innerHTML = '';
-          renderCards(tab === 'shortlisted' ? shortlisted : results);
+    const SCORE_MAX = { skills_score: 40, experience_score: 30, education_score: 20, presentation_score: 10 };
+
+    function scoreBar(label, cls, value, max) {
+      const v = Number(value) || 0;
+      const pct = Math.max(0, Math.min(100, Math.round(v / max * 100)));
+      return `<div class="score-bar-row"><div class="bar-label">${label}</div><div class="bar-track"><div class="bar-fill ${cls}" style="width:${pct}%"></div></div><div class="bar-score">${v}</div></div>`;
+    }
+
+    // Shared by live results and history. Everything from the LLM or the
+    // uploaded file is escaped: a crafted resume must not inject HTML.
+    function buildCandidateCard(c) {
+      const score = Number(c.overall_score) || 0;
+      const scoreClass = score >= 70 ? 'score-green' : score >= 50 ? 'score-yellow' : 'score-red';
+      const filename = c.filename || c.resume_filename || '';
+      const card = document.createElement('div');
+      card.className = 'candidate-card';
+      card.innerHTML = `
+        <div class="card-header">
+          <div class="card-identity">
+            <div class="candidate-name">${esc(c.candidate_name)}</div>
+            <div class="candidate-file">${esc(filename)}</div>
+          </div>
+          <div class="card-badges">
+            <div class="score-badge ${scoreClass}">${score}<small>/ 100</small></div>
+            ${c.shortlisted ? '<div class="shortlisted-chip"><span>✓</span> Shortlisted</div>' : ''}
+          </div>
+        </div>
+        ${c.error ? `<div class="error-chip">⚠ ${esc(c.error)}</div>` : ''}
+        <div class="score-bars">
+          ${scoreBar('Skills', 'skills', c.skills_score, SCORE_MAX.skills_score)}
+          ${scoreBar('Experience', 'experience', c.experience_score, SCORE_MAX.experience_score)}
+          ${scoreBar('Education', 'education', c.education_score, SCORE_MAX.education_score)}
+          ${scoreBar('Presentation', 'presentation', c.presentation_score, SCORE_MAX.presentation_score)}
+        </div>
+        <div class="card-lists">
+          <div class="list-box">
+            <div class="list-box-title green">✓ Strengths</div>
+            ${(c.strengths || []).map(s => `<div class="list-item"><span class="dot green"></span><span>${esc(s)}</span></div>`).join('')}
+          </div>
+          <div class="list-box">
+            <div class="list-box-title red">✗ Gaps</div>
+            ${(c.gaps || []).map(g => `<div class="list-item"><span class="dot red"></span><span>${esc(g)}</span></div>`).join('')}
+          </div>
+        </div>
+        <div class="card-summary">${esc(c.summary)}</div>
+        ${c.resume_url ? `<button class="view-cv-btn" type="button">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          View CV
+        </button>` : ''}
+      `;
+      if (c.resume_url) {
+        card.querySelector('.view-cv-btn').addEventListener('click', () => {
+          openCVPreview(c.resume_url, c.candidate_name, filename);
         });
-      });
+      }
+      return card;
     }
 
     function renderCards(candidates) {
@@ -3304,70 +3455,7 @@ Competencies to check while interviewing for the Role:
         `;
         return;
       }
-
-      candidates.forEach(candidate => {
-        const scoreClass = candidate.overall_score >= 70 ? 'score-green' : candidate.overall_score >= 50 ? 'score-yellow' : 'score-red';
-        const card = document.createElement('div');
-        card.className = 'candidate-card';
-        card.innerHTML = `
-          <div class="card-header">
-            <div class="card-identity">
-              <div class="candidate-name">${candidate.candidate_name}</div>
-              <div class="candidate-file">${candidate.filename}</div>
-            </div>
-            <div class="card-badges">
-              <div class="score-badge ${scoreClass}">
-                ${candidate.overall_score}
-                <small>/ 100</small>
-              </div>
-              ${candidate.shortlisted ? '<div class="shortlisted-chip"><span>✓</span> Shortlisted</div>' : ''}
-            </div>
-          </div>
-          <div class="score-bars">
-            <div class="score-bar-row">
-              <div class="bar-label">Skills</div>
-              <div class="bar-track"><div class="bar-fill skills" style="width: ${candidate.skills_score}%"></div></div>
-              <div class="bar-score">${candidate.skills_score}</div>
-            </div>
-            <div class="score-bar-row">
-              <div class="bar-label">Experience</div>
-              <div class="bar-track"><div class="bar-fill experience" style="width: ${candidate.experience_score}%"></div></div>
-              <div class="bar-score">${candidate.experience_score}</div>
-            </div>
-            <div class="score-bar-row">
-              <div class="bar-label">Education</div>
-              <div class="bar-track"><div class="bar-fill education" style="width: ${candidate.education_score}%"></div></div>
-              <div class="bar-score">${candidate.education_score}</div>
-            </div>
-            <div class="score-bar-row">
-              <div class="bar-label">Presentation</div>
-              <div class="bar-track"><div class="bar-fill presentation" style="width: ${candidate.presentation_score}%"></div></div>
-              <div class="bar-score">${candidate.presentation_score}</div>
-            </div>
-          </div>
-          <div class="card-lists">
-            <div class="list-box">
-              <div class="list-box-title green">✓ Strengths</div>
-              ${candidate.strengths.map(s => `<div class="list-item"><span class="dot green"></span><span>${s}</span></div>`).join('')}
-            </div>
-            <div class="list-box">
-              <div class="list-box-title red">✗ Gaps</div>
-              ${candidate.gaps.map(g => `<div class="list-item"><span class="dot red"></span><span>${g}</span></div>`).join('')}
-            </div>
-          </div>
-          <div class="card-summary">${candidate.summary}</div>
-          ${candidate.resume_url ? `<button class="view-cv-btn" data-cv-url="${candidate.resume_url}" data-cv-name="${candidate.candidate_name.replace(/"/g, '&quot;')}">
-            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-            View CV
-          </button>` : ''}
-        `;
-        if (candidate.resume_url) {
-          card.querySelector('.view-cv-btn').addEventListener('click', () => {
-            openCVPreview(candidate.resume_url, candidate.candidate_name);
-          });
-        }
-        cardsContainer.appendChild(card);
-      });
+      candidates.forEach(candidate => cardsContainer.appendChild(buildCandidateCard(candidate)));
     }
 
     /* ─────────────────────────────────────────────────────────────────── */
@@ -3417,18 +3505,21 @@ Competencies to check while interviewing for the Role:
     const screenView = document.getElementById('screen-view');
     const historyView = document.getElementById('history-view');
 
+    function setActiveNav(tab) {
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t === tab));
+    }
+
     navScreen.addEventListener('click', () => {
-      navScreen.classList.add('active');
-      navHistory.classList.remove('active');
+      setActiveNav(navScreen);
       screenView.style.display = '';
       historyView.classList.remove('visible');
     });
 
     navHistory.addEventListener('click', () => {
-      navHistory.classList.add('active');
-      navScreen.classList.remove('active');
+      setActiveNav(navHistory);
       screenView.style.display = 'none';
       historyView.classList.add('visible');
+      showHistoryList();
       loadHistory();
     });
 
@@ -3569,8 +3660,8 @@ Competencies to check while interviewing for the Role:
             </div>
           </div>
           <div style="flex:1;min-width:0;">
-            <div class="screening-role">${s.job_role}</div>
-            <div class="screening-meta">${date} at ${time}${s.recorded_by ? ' &middot; ' + s.recorded_by : ''}</div>
+            <div class="screening-role">${esc(s.job_role)}</div>
+            <div class="screening-meta">${date} at ${time}${s.recorded_by ? ' &middot; ' + esc(s.recorded_by) : ''}</div>
           </div>
           <div class="screening-badges">
             <span class="badge badge-total">${s.total_screened} screened</span>
@@ -3647,56 +3738,26 @@ Competencies to check while interviewing for the Role:
 
       historyCards.innerHTML = '';
 
-      data.forEach(c => {
-        const scoreClass = c.overall_score >= 70 ? 'score-green' : c.overall_score >= 50 ? 'score-yellow' : 'score-red';
-        const card = document.createElement('div');
-        card.className = 'candidate-card';
-        card.innerHTML = `
-          <div class="card-header">
-            <div class="card-identity">
-              <div class="candidate-name">${c.candidate_name}</div>
-              <div class="candidate-file">${c.resume_filename}</div>
-            </div>
-            <div class="card-badges">
-              <div class="score-badge ${scoreClass}">${c.overall_score}<small>/ 100</small></div>
-              ${c.shortlisted ? '<div class="shortlisted-chip"><span>✓</span> Shortlisted</div>' : ''}
-            </div>
-          </div>
-          <div class="score-bars">
-            <div class="score-bar-row"><div class="bar-label">Skills</div><div class="bar-track"><div class="bar-fill skills" style="width:${c.skills_score}%"></div></div><div class="bar-score">${c.skills_score}</div></div>
-            <div class="score-bar-row"><div class="bar-label">Experience</div><div class="bar-track"><div class="bar-fill experience" style="width:${c.experience_score}%"></div></div><div class="bar-score">${c.experience_score}</div></div>
-            <div class="score-bar-row"><div class="bar-label">Education</div><div class="bar-track"><div class="bar-fill education" style="width:${c.education_score}%"></div></div><div class="bar-score">${c.education_score}</div></div>
-            <div class="score-bar-row"><div class="bar-label">Presentation</div><div class="bar-track"><div class="bar-fill presentation" style="width:${c.presentation_score}%"></div></div><div class="bar-score">${c.presentation_score}</div></div>
-          </div>
-          <div class="card-lists">
-            <div class="list-box"><div class="list-box-title green">✓ Strengths</div>${(c.strengths||[]).map(s=>`<div class="list-item"><span class="dot green"></span><span>${s}</span></div>`).join('')}</div>
-            <div class="list-box"><div class="list-box-title red">✗ Gaps</div>${(c.gaps||[]).map(g=>`<div class="list-item"><span class="dot red"></span><span>${g}</span></div>`).join('')}</div>
-          </div>
-          <div class="card-summary">${c.summary}</div>
-          ${c.resume_url ? `<button class="view-cv-btn" data-cv-url="${c.resume_url}" data-cv-name="${c.candidate_name.replace(/"/g, '&quot;')}">
-            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-            View CV
-          </button>` : ''}
-        `;
-        if (c.resume_url) {
-          card.querySelector('.view-cv-btn').addEventListener('click', () => {
-            openCVPreview(c.resume_url, c.candidate_name);
-          });
-        }
-        historyCards.appendChild(card);
-      });
+      if (!data.length) {
+        historyCards.innerHTML = '<div style="padding:20px;color:var(--text-muted);font-size:13px;">No candidates in this session.</div>';
+        return;
+      }
+      data.forEach(c => historyCards.appendChild(buildCandidateCard(c)));
     }
 
-    historyBack.addEventListener('click', () => {
+    function showHistoryList() {
       historyDetailView.classList.remove('visible');
       historyBack.classList.remove('visible');
       historyListView.style.display = 'flex';
       currentDetailCandidates = [];
-    });
+    }
+
+    historyBack.addEventListener('click', showHistoryList);
 
     /* ── CV Preview Modal ──────────────────────────────────────────── */
-    function openCVPreview(url, name) {
-      const isDocx = /\.docx$/i.test(url);
+    function openCVPreview(url, name, filename = '') {
+      // Signed URLs carry a ?token=..., so check the path or the filename.
+      const isDocx = /\.docx$/i.test(filename) || /\.docx(\?|$)/i.test(url);
       const src = isDocx
         ? `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`
         : url;

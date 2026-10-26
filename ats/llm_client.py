@@ -76,8 +76,38 @@ def _build_prompt(jd_text: str, resume_text: str) -> str:
 
 
 def _extract_json(text: str) -> dict:
-    cleaned = re.sub(r"```(?:json)?\s*", "", text).replace("```", "").strip()
-    return json.loads(cleaned)
+    cleaned = re.sub(r"```(?:json)?\s*", "", text or "").replace("```", "").strip()
+    # Tolerate stray prose around the JSON object.
+    start, end = cleaned.find("{"), cleaned.rfind("}")
+    if start != -1 and end > start:
+        cleaned = cleaned[start:end + 1]
+    result = json.loads(cleaned)
+    if not isinstance(result, dict):
+        raise json.JSONDecodeError("Expected a JSON object", cleaned, 0)
+    return result
+
+
+_SCORE_LIMITS = {
+    "skills_score": 40,
+    "experience_score": 30,
+    "education_score": 20,
+    "presentation_score": 10,
+}
+
+
+def _to_int(value, upper: int) -> int:
+    """Coerce an LLM-provided score to an int within [0, upper]."""
+    try:
+        n = int(round(float(value)))
+    except (TypeError, ValueError):
+        n = 0
+    return max(0, min(upper, n))
+
+
+def _to_bool(value) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "yes", "1")
+    return bool(value)
 
 
 def _error_result(filename: str, error: str) -> dict:
@@ -177,24 +207,30 @@ async def score_resume(jd_text: str, resume_text: str, filename: str) -> dict:
                 result = _extract_json(raw)
                 result["filename"] = filename
 
-                # Recompute overall_score from subscores so we don't trust LLM arithmetic.
-                computed = (
-                    result.get("skills_score", 0)
-                    + result.get("experience_score", 0)
-                    + result.get("education_score", 0)
-                    + result.get("presentation_score", 0)
-                )
+                # Clamp subscores to their rubric limits, then recompute
+                # overall_score so we don't trust LLM arithmetic.
+                for key, upper in _SCORE_LIMITS.items():
+                    result[key] = _to_int(result.get(key), upper)
+                computed = sum(result[key] for key in _SCORE_LIMITS)
                 result["overall_score"] = computed
                 # Job hoppers need a much stronger profile to be shortlisted.
                 # The LLM already penalises them in experience_score; here we
                 # additionally raise the shortlist bar so marginal candidates
                 # with this pattern don't slip through.
-                job_hopper = result.get("job_hopper", False)
+                job_hopper = _to_bool(result.get("job_hopper", False))
+                result["job_hopper"] = job_hopper
                 shortlist_threshold = 82 if job_hopper else 70
                 result["shortlisted"] = computed >= shortlist_threshold
 
+                for key in ("strengths", "gaps"):
+                    value = result.get(key)
+                    result[key] = [str(v) for v in value] if isinstance(value, list) else []
+                for key in ("job_role", "phone_number", "email", "city", "summary"):
+                    value = result.get(key)
+                    result[key] = "" if value is None else str(value)
+
                 # Fall back to filename stem if name is missing/generic.
-                name = result.get("candidate_name", "").strip()
+                name = str(result.get("candidate_name") or "").strip()
                 if not name or name.lower() == "unknown":
                     result["candidate_name"] = filename.rsplit(".", 1)[0]
 

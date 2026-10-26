@@ -41,8 +41,18 @@ def _parse_pdf(file_bytes: bytes, filename: str) -> str:
 def _parse_docx(file_bytes: bytes, filename: str) -> str:
     try:
         doc = Document(io.BytesIO(file_bytes))
-        paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
-        result = "\n".join(paragraphs).strip()
+        parts = [p.text for p in doc.paragraphs if p.text.strip()]
+        # Many resume templates put most of their content in tables.
+        for table in doc.tables:
+            for row in table.rows:
+                seen = []
+                for cell in row.cells:
+                    text = cell.text.strip()
+                    if text and text not in seen:  # merged cells repeat
+                        seen.append(text)
+                if seen:
+                    parts.append(" | ".join(seen))
+        result = "\n".join(parts).strip()
         if not result:
             raise ValueError("No text could be extracted from the DOCX file.")
         return result
